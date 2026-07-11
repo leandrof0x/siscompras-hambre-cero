@@ -376,26 +376,8 @@ textarea{resize:vertical;min-height:65px;}
     <!-- INVENTARIO CENTRAL / POR INSTITUCIÓN -->
     <div class="view" id="view-inventario">
       <div id="inv-central-view">
-        <div class="tab-bar">
-          <button class="tab active" onclick="switchInvTab('central',this)">🏢 Depósito Central</button>
-          <button class="tab" onclick="switchInvTab('inst',this)">🏫 Por Institución</button>
-        </div>
-        <div id="inv-tab-central">
-          <div class="search-bar">
-            <div class="search-input"><input type="text" id="buscar-inv" placeholder="Buscar producto..." oninput="filtrarInventario()"></div>
-            <select class="select-filter" id="filtro-cat-inv" onchange="filtrarInventario()">
-              <option value="">Todas las categorías</option>
-              <option value="Alimentos Secos">Alimentos Secos</option>
-              <option value="Lácteos">Lácteos</option>
-              <option value="Frutas y Verduras">Frutas y Verduras</option>
-              <option value="Carnes">Carnes</option>
-              <option value="Limpieza">Limpieza</option>
-            </select>
-          </div>
-          <div id="alert-stock-bajo"></div>
-          <div class="card"><div class="table-wrap"><table id="tbl-inventario"></table></div></div>
-        </div>
-        <div id="inv-tab-inst" style="display:none;">
+        <div id="alert-stock-bajo"></div>
+        <div id="inv-tab-inst">
           <div class="grid-3" id="inv-inst-selector"></div>
         </div>
       </div>
@@ -750,9 +732,8 @@ with check (true);</textarea>
         </select>
       </div>
     </div>
-    <div class="form-row">
+    <div class="form-row single">
       <div class="form-group"><label>Presentación</label><input type="text" id="prod-presentacion" placeholder="Ej: Paquete 500 gr, Lata 300 gr"></div>
-      <div class="form-group"><label>Stock actual</label><input type="number" id="prod-stock-actual" placeholder="0"></div>
     </div>
     <div class="form-row single">
       <div class="form-group">
@@ -854,20 +835,20 @@ let proveedores = [
 ];
 
 let productos = [
-  {id:1,nombre:"Arroz blanco",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 1 kg",stockActual:820,proveedores:[{proveedorId:1,precio:6500}]},
-  {id:2,nombre:"Fideos tirabuzón",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",stockActual:180,proveedores:[{proveedorId:1,precio:5200}]},
-  {id:3,nombre:"Lentejas",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",stockActual:420,proveedores:[{proveedorId:1,precio:8900}]},
-  {id:4,nombre:"Leche entera",categoria:"Lácteos",unidad:"litro",presentacion:"Sachet 1 litro",stockActual:90,proveedores:[{proveedorId:3,precio:4800}]},
-  {id:5,nombre:"Queso Paraguay",categoria:"Lácteos",unidad:"kg",presentacion:"Pieza al vacío",stockActual:68,proveedores:[{proveedorId:3,precio:35000}]},
-  {id:6,nombre:"Tomates",categoria:"Frutas y Verduras",unidad:"kg",presentacion:"A granel",stockActual:45,proveedores:[{proveedorId:4,precio:4500}]},
-  {id:7,nombre:"Zanahoria",categoria:"Frutas y Verduras",unidad:"kg",presentacion:"A granel",stockActual:210,proveedores:[{proveedorId:4,precio:3200}]},
-  {id:8,nombre:"Carne molida",categoria:"Carnes",unidad:"kg",presentacion:"Bandeja 1 kg",stockActual:55,proveedores:[{proveedorId:2,precio:28000}]},
-  {id:9,nombre:"Pollo entero",categoria:"Carnes",unidad:"kg",presentacion:"A granel",stockActual:390,proveedores:[{proveedorId:2,precio:18500}]},
-  {id:10,nombre:"Detergente 5L",categoria:"Limpieza",unidad:"unidad",presentacion:"Bidón 5 litros",stockActual:8,proveedores:[{proveedorId:5,precio:32000}]},
-  {id:11,nombre:"Aceite girasol",categoria:"Alimentos Secos",unidad:"litro",presentacion:"Botella 900 ml",stockActual:340,proveedores:[{proveedorId:1,precio:9800}]},
-  {id:12,nombre:"Sal fina",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",stockActual:150,proveedores:[{proveedorId:1,precio:2100}]},
-  {id:13,nombre:"Harina de trigo",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 1 kg",stockActual:200,proveedores:[{proveedorId:1,precio:4200}]},
-  {id:14,nombre:"Poroto",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",stockActual:90,proveedores:[{proveedorId:1,precio:7800}]},
+  {id:1,nombre:"Arroz blanco",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 1 kg",proveedores:[{proveedorId:1,precio:6500}]},
+  {id:2,nombre:"Fideos tirabuzón",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",proveedores:[{proveedorId:1,precio:5200}]},
+  {id:3,nombre:"Lentejas",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",proveedores:[{proveedorId:1,precio:8900}]},
+  {id:4,nombre:"Leche entera",categoria:"Lácteos",unidad:"litro",presentacion:"Sachet 1 litro",proveedores:[{proveedorId:3,precio:4800}]},
+  {id:5,nombre:"Queso Paraguay",categoria:"Lácteos",unidad:"kg",presentacion:"Pieza al vacío",proveedores:[{proveedorId:3,precio:35000}]},
+  {id:6,nombre:"Tomates",categoria:"Frutas y Verduras",unidad:"kg",presentacion:"A granel",proveedores:[{proveedorId:4,precio:4500}]},
+  {id:7,nombre:"Zanahoria",categoria:"Frutas y Verduras",unidad:"kg",presentacion:"A granel",proveedores:[{proveedorId:4,precio:3200}]},
+  {id:8,nombre:"Carne molida",categoria:"Carnes",unidad:"kg",presentacion:"Bandeja 1 kg",proveedores:[{proveedorId:2,precio:28000}]},
+  {id:9,nombre:"Pollo entero",categoria:"Carnes",unidad:"kg",presentacion:"A granel",proveedores:[{proveedorId:2,precio:18500}]},
+  {id:10,nombre:"Detergente 5L",categoria:"Limpieza",unidad:"unidad",presentacion:"Bidón 5 litros",proveedores:[{proveedorId:5,precio:32000}]},
+  {id:11,nombre:"Aceite girasol",categoria:"Alimentos Secos",unidad:"litro",presentacion:"Botella 900 ml",proveedores:[{proveedorId:1,precio:9800}]},
+  {id:12,nombre:"Sal fina",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",proveedores:[{proveedorId:1,precio:2100}]},
+  {id:13,nombre:"Harina de trigo",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 1 kg",proveedores:[{proveedorId:1,precio:4200}]},
+  {id:14,nombre:"Poroto",categoria:"Alimentos Secos",unidad:"kg",presentacion:"Paquete 500 gr",proveedores:[{proveedorId:1,precio:7800}]},
 ];
 
 let instituciones = [
@@ -943,6 +924,10 @@ let ordenes = [
 let nextOCId=4, nextProvId=6, nextProdId=15, nextInstId=5, nextRecetaId=5;
 let ocEditId=null, currentSemanaOffset=0, invInstActual=null;
 
+// Consumo automático de stock por institución según el menú semanal
+let ultimoConsumoFecha=null; // última fecha (YYYY-MM-DD) hasta la que ya se descontó stock
+const UMBRAL_DIAS_ALERTA=3; // alerta si el stock alcanza para menos de esta cantidad de días
+
 // =============================================
 // UTILS
 // =============================================
@@ -987,6 +972,83 @@ function fechaStr(d){
   return d.toISOString().split('T')[0];
 }
 
+// =============================================
+// CONSUMO AUTOMÁTICO DE STOCK (por institución, según menú semanal)
+// =============================================
+// Recorre día por día desde el último consumo aplicado hasta hoy y, por cada
+// día que tenga una receta asignada en el menú semanal, descuenta de cada
+// institución la cantidad de cada ingrediente × su cantidad de beneficiarios.
+function aplicarConsumoAutomatico(){
+  const hoy=fechaStr(new Date());
+  if(!ultimoConsumoFecha){ultimoConsumoFecha=hoy;guardarEstado({sync:false});return;}
+  if(ultimoConsumoFecha>=hoy)return;
+
+  let huboConsumo=false;
+  const cursor=new Date(ultimoConsumoFecha+'T12:00:00');
+  let dias=0;
+  while(fechaStr(cursor)<hoy && dias<90){ // tope de seguridad: 90 días
+    cursor.setDate(cursor.getDate()+1);
+    const key=fechaStr(cursor);
+    const recetaId=menuSemanal[key];
+    const receta=recetaId?getReceta(recetaId):null;
+    if(receta){
+      instituciones.forEach(inst=>{
+        const items=invInstituciones[inst.id]||(invInstituciones[inst.id]=[]);
+        receta.ingredientes.forEach(ing=>{
+          const cantidadTotal=ing.cantidad*(inst.beneficiarios||0);
+          if(cantidadTotal<=0)return;
+          const item=items.find(i=>i.productoId===ing.productoId);
+          if(!item)return; // producto no cargado en esta institución: no hay de dónde descontar
+          item.movimientos.push({tipo:'salida',cantidad:cantidadTotal,fecha:key,obs:`Consumo automático - ${receta.nombre}`});
+          item.stockActual=Math.max(0,item.stockActual-cantidadTotal);
+          huboConsumo=true;
+        });
+      });
+    }
+    dias++;
+  }
+  ultimoConsumoFecha=hoy;
+  guardarEstado({sync:huboConsumo});
+}
+
+// Consumo diario promedio por producto para una institución, estimado a partir
+// del menú asignado en la semana actual (lunes a domingo).
+function calcularConsumoDiarioPromedio(instId){
+  const inst=getInst(instId);
+  const lunes=getLunesSemana(0);
+  const totales={};
+  let diasConMenu=0;
+  for(let d=0;d<7;d++){
+    const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
+    const receta=getReceta(menuSemanal[fechaStr(fecha)]);
+    if(!receta)continue;
+    diasConMenu++;
+    receta.ingredientes.forEach(ing=>{
+      totales[ing.productoId]=(totales[ing.productoId]||0)+ing.cantidad*(inst.beneficiarios||0);
+    });
+  }
+  const promedios={};
+  if(diasConMenu>0)Object.keys(totales).forEach(pid=>{promedios[pid]=totales[pid]/diasConMenu;});
+  return promedios;
+}
+
+// Devuelve la lista de alertas de stock (agotado o por debajo del umbral de días) por institución
+function getAlertasStock(){
+  const alertas=[];
+  instituciones.forEach(inst=>{
+    const promedios=calcularConsumoDiarioPromedio(inst.id);
+    (invInstituciones[inst.id]||[]).forEach(item=>{
+      const promedio=promedios[item.productoId]||0;
+      const diasRestantes=promedio>0?item.stockActual/promedio:(item.stockActual<=0?0:Infinity);
+      if(item.stockActual<=0||(promedio>0&&diasRestantes<UMBRAL_DIAS_ALERTA)){
+        alertas.push({inst,producto:getProd(item.productoId),item,diasRestantes,promedio});
+      }
+    });
+  });
+  alertas.sort((a,b)=>a.diasRestantes-b.diasRestantes);
+  return alertas;
+}
+
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-backdrop').forEach(b=>{
@@ -1003,7 +1065,7 @@ const topbarMeta={
   recetario:{title:"Recetario",sub:"Recetas con cantidades por beneficiario"},
   "pedido-calc":{title:"Calcular Pedido",sub:"Estimación automática de insumos"},
   instituciones:{title:"Instituciones",sub:"Escuelas y centros atendidos"},
-  inventario:{title:"Inventario",sub:"Stock central y por institución"},
+  inventario:{title:"Inventario",sub:"Stock por institución"},
   proveedores:{title:"Proveedores",sub:"Registro de proveedores"},
   catalogo:{title:"Catálogo de Productos",sub:"Productos del sistema"},
   datos:{title:"Datos",sub:"Respaldos y exportaciones"},
@@ -1053,7 +1115,7 @@ function showView(id,el){
 // =============================================
 function renderDashboard(){
   const ocActivas=ordenes.filter(o=>o.estado==='Enviada').length;
-  const sinStock=productos.filter(p=>p.stockActual<=0).length;
+  const alertas=getAlertasStock();
   const totalBenef=instituciones.reduce((s,i)=>s+i.beneficiarios,0);
   const totalMes=ordenes.reduce((s,o)=>s+totalOC(o),0);
   const menuDias=Object.keys(menuSemanal).length;
@@ -1062,7 +1124,7 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">OC enviadas</div><div class="stat-value" style="color:var(--amarillo)">${ocActivas}</div><div class="stat-sub">Pendientes</div></div>
     <div class="stat-card"><div class="stat-icon">🏫</div><div class="stat-label">Instituciones</div><div class="stat-value" style="color:var(--azul)">${instituciones.length}</div><div class="stat-sub">${totalBenef} beneficiarios</div></div>
     <div class="stat-card"><div class="stat-icon">📖</div><div class="stat-label">Recetas</div><div class="stat-value" style="color:var(--violeta)">${recetas.length}</div><div class="stat-sub">${menuDias} días planificados</div></div>
-    <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-label">Sin stock</div><div class="stat-value" style="color:var(--rojo)">${sinStock}</div><div class="stat-sub">Productos agotados</div></div>
+    <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-label">Alertas de stock</div><div class="stat-value" style="color:var(--rojo)">${alertas.length}</div><div class="stat-sub">Por institución</div></div>
     <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Total OC</div><div class="stat-value num" style="font-size:16px;color:var(--verde)">${fmt(totalMes)}</div><div class="stat-sub">Acumulado</div></div>
   `;
 
@@ -1077,15 +1139,17 @@ function renderDashboard(){
     </tr>`).join('')}</tbody>
   `;
 
-  const criticosList=productos.filter(p=>p.stockActual<=0);
   const el=document.getElementById('dash-stock-critico');
-  if(!criticosList.length){el.innerHTML=`<div style="text-align:center;color:var(--verde);padding:14px;">✅ Todos los productos tienen stock</div>`;} else {
-    el.innerHTML=criticosList.map(p=>{
+  if(!alertas.length){el.innerHTML=`<div style="text-align:center;color:var(--verde);padding:14px;">✅ Todas las instituciones tienen stock suficiente</div>`;} else {
+    el.innerHTML=alertas.slice(0,8).map(a=>{
+      const agotado=a.item.stockActual<=0;
+      const sub=agotado?'Agotado':`${esc(a.inst.nombre)} · ~${Math.floor(a.diasRestantes)} día(s)`;
       return `<div style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-          <span style="font-size:12px;font-weight:600;">${esc(p.nombre)}</span>
-          <span style="font-size:11px;color:var(--gris-medio);">${p.stockActual} ${p.unidad}</span>
+          <span style="font-size:12px;font-weight:600;">${esc(a.producto.nombre)}</span>
+          <span style="font-size:11px;color:var(--gris-medio);">${a.item.stockActual} ${a.producto.unidad}</span>
         </div>
+        <div style="font-size:11px;color:var(--rojo);margin-bottom:3px;">${sub}</div>
         <div class="stock-bar"><div class="stock-fill" style="width:100%;background:var(--rojo);"></div></div>
       </div>`;
     }).join('');
@@ -1280,10 +1344,9 @@ function verOC(id){
 }
 function editarOC(id){abrirModalOC(id);}
 function recibirOC(id){
-  if(!confirm('¿Marcar como recibida? El stock central se actualizará.'))return;
+  if(!confirm('¿Marcar como recibida? Recordá registrar el ingreso de stock en cada institución desde Inventario → Registrar movimiento.'))return;
   const oc=ordenes.find(o=>o.id===id);
   oc.estado='Recibida';
-  oc.items.forEach(i=>{const p=productos.find(pr=>pr.id===i.productoId);if(p)p.stockActual+=i.cantidad;});
   guardarEstado();
   renderTablaOrdenes();
 }
@@ -1514,11 +1577,16 @@ function calcularPedido(){
   const detalleEl=document.getElementById('calc-detalle');
   if(!Object.keys(totalesProd).length){detalleEl.innerHTML='';return;}
 
+  const stockInstSeleccionadas=(productoId)=>instSelIds.reduce((s,id)=>{
+    const item=(invInstituciones[id]||[]).find(i=>i.productoId===productoId);
+    return s+(item?item.stockActual:0);
+  },0);
+
   const rows=Object.values(totalesProd).map(({productoId,total,unidad})=>{
     const p=getProd(productoId);
-    const stockCentral=p.stockActual||0;
-    const faltante=Math.max(0,total-stockCentral);
-    return {p,total,unidad,stockCentral,faltante};
+    const stockInst=stockInstSeleccionadas(productoId);
+    const faltante=Math.max(0,total-stockInst);
+    return {p,total,unidad,stockInst,faltante};
   });
 
   detalleEl.innerHTML=`
@@ -1526,12 +1594,12 @@ function calcularPedido(){
       <div class="card-header"><div class="card-title">Insumos necesarios</div><div class="card-sub">Basado en ${totalBenef} beneficiarios × días con menú</div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Categoría</th><th style="text-align:right;">Necesario</th><th style="text-align:right;">Stock central</th><th style="text-align:right;">A pedir</th><th>Estado</th></tr></thead>
-          <tbody>${rows.map(({p,total,unidad,stockCentral,faltante})=>`<tr>
+          <thead><tr><th>Producto</th><th>Categoría</th><th style="text-align:right;">Necesario</th><th style="text-align:right;">Stock instituciones sel.</th><th style="text-align:right;">A pedir</th><th>Estado</th></tr></thead>
+          <tbody>${rows.map(({p,total,unidad,stockInst,faltante})=>`<tr>
             <td style="font-weight:600;">${p.nombre}</td>
             <td><span class="categoria-chip ${catClass[p.categoria]||''}">${p.categoria}</span></td>
             <td style="text-align:right;" class="num">${fmtNum(total,2)} ${p.unidad}</td>
-            <td style="text-align:right;" class="num">${stockCentral} ${p.unidad}</td>
+            <td style="text-align:right;" class="num">${stockInst} ${p.unidad}</td>
             <td style="text-align:right;font-weight:700;" class="num" style="color:${faltante>0?'var(--rojo)':'var(--verde)'};">${faltante>0?fmtNum(faltante,2)+' '+p.unidad:'<span style="color:var(--verde)">✓ Suficiente</span>'}</td>
             <td>${faltante>0?'<span class="badge badge-rojo">Falta</span>':'<span class="badge badge-verde">OK</span>'}</td>
           </tr>`).join('')}</tbody>
@@ -1657,53 +1725,35 @@ function eliminarInstitucion(id){
 function renderInventario(){
   document.getElementById('inv-central-view').style.display='block';
   document.getElementById('inv-inst-detail-view').style.display='none';
-  renderInvCentral();
+  renderAlertaStockGlobal();
   renderInvInstSelector();
 }
 
-function switchInvTab(tab,el){
-  document.querySelectorAll('.tab-bar .tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('inv-tab-central').style.display=tab==='central'?'block':'none';
-  document.getElementById('inv-tab-inst').style.display=tab==='inst'?'block':'none';
-}
-
-function renderInvCentral(){
-  const buscar=(document.getElementById('buscar-inv')?.value||'').toLowerCase();
-  const cat=document.getElementById('filtro-cat-inv')?.value||'';
-  const agotados=productos.filter(p=>p.stockActual<=0);
+function renderAlertaStockGlobal(){
+  const alertas=getAlertasStock();
   const alertEl=document.getElementById('alert-stock-bajo');
-  alertEl.innerHTML=agotados.length?`<div class="alert alert-warn">⚠️ ${agotados.length} producto(s) sin stock: ${agotados.map(p=>`<strong>${esc(p.nombre)}</strong>`).join(', ')}</div>`:'';
-  const lista=productos.filter(p=>p.nombre.toLowerCase().includes(buscar)&&(!cat||p.categoria===cat));
-  document.getElementById('tbl-inventario').innerHTML=`
-    <thead><tr><th>Producto</th><th>Categoría</th><th>Stock actual</th><th>Unidad</th><th>Proveedor</th><th>Estado</th><th>Acciones</th></tr></thead>
-    <tbody>${lista.map(p=>{
-      const agotado=p.stockActual<=0;
-      const color=agotado?'var(--rojo)':'var(--verde-claro)';
-      return `<tr>
-        <td style="font-weight:600;">${esc(p.nombre)}</td>
-        <td><span class="categoria-chip ${catClass[p.categoria]||''}">${esc(p.categoria)}</span></td>
-        <td class="num" style="font-weight:700;color:${color};">${p.stockActual}</td>
-        <td>${p.unidad}</td>
-        <td style="font-size:12px;color:var(--gris-medio);">${esc(nombresProveedoresProd(p))}</td>
-        <td>${agotado?'<span class="badge badge-rojo">⚠️ Sin stock</span>':'<span class="badge badge-verde">OK</span>'}</td>
-        <td><button class="btn-icon btn-icon-del" title="Eliminar producto" onclick="eliminarProducto(${p.id})">🗑️</button></td>
-      </tr>`;
-    }).join('')}</tbody>
-  `;
+  if(!alertas.length){alertEl.innerHTML='';return;}
+  const items=alertas.slice(0,8).map(a=>{
+    const txt=a.item.stockActual<=0?'sin stock':`quedan ~${Math.floor(a.diasRestantes)} día(s)`;
+    return `<strong>${esc(a.producto.nombre)}</strong> en ${esc(a.inst.nombre)} (${txt})`;
+  }).join(', ');
+  alertEl.innerHTML=`<div class="alert alert-warn">⚠️ ${alertas.length} alerta(s) de stock: ${items}${alertas.length>8?'…':''}</div>`;
 }
-function filtrarInventario(){renderInvCentral();}
 
 function renderInvInstSelector(){
+  const alertas=getAlertasStock();
   const el=document.getElementById('inv-inst-selector');
-  el.innerHTML=instituciones.map(i=>`
+  el.innerHTML=instituciones.map(i=>{
+    const nAlertas=alertas.filter(a=>a.inst.id===i.id).length;
+    return `
     <div class="card" style="padding:18px;margin-bottom:0;cursor:pointer;" onclick="verInvInst(${i.id})">
       <div style="font-size:22px;margin-bottom:8px;">${instEmoji[i.tipo]||'🏫'}</div>
       <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${i.nombre}</div>
       <div style="font-size:12px;color:var(--gris-medio);">📦 ${(invInstituciones[i.id]||[]).length} productos registrados</div>
       <div style="font-size:12px;color:var(--azul);margin-top:4px;">👥 ${i.beneficiarios} beneficiarios</div>
+      ${nAlertas?`<div style="font-size:12px;color:var(--rojo);margin-top:4px;font-weight:600;">⚠️ ${nAlertas} alerta(s) de stock</div>`:''}
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 function verInvInst(instId){
@@ -1727,16 +1777,27 @@ function renderTablaInvInst(instId){
     el.innerHTML=`<tbody><tr><td><div class="empty-state"><div class="big">📦</div><h3>Sin stock registrado</h3><p>Registrá el primer movimiento.</p></div></td></tr></tbody>`;
     return;
   }
+  const promedios=calcularConsumoDiarioPromedio(instId);
   el.innerHTML=`
-    <thead><tr><th>Producto</th><th>Categoría</th><th style="text-align:right;">Stock actual</th><th>Unidad</th><th>Último movimiento</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Producto</th><th>Categoría</th><th style="text-align:right;">Stock actual</th><th>Unidad</th><th>Días restantes</th><th>Último movimiento</th><th>Acciones</th></tr></thead>
     <tbody>${items.map(item=>{
       const p=getProd(item.productoId);
       const ult=item.movimientos[item.movimientos.length-1];
+      const promedio=promedios[item.productoId]||0;
+      const diasRestantes=promedio>0?item.stockActual/promedio:null;
+      const agotado=item.stockActual<=0;
+      let diasTxt='—', diasColor='var(--gris-medio)';
+      if(agotado){diasTxt='Agotado';diasColor='var(--rojo)';}
+      else if(diasRestantes!=null){
+        diasTxt=`~${Math.floor(diasRestantes)} día(s)`;
+        diasColor=diasRestantes<UMBRAL_DIAS_ALERTA?'var(--rojo)':'var(--verde-claro)';
+      }
       return `<tr>
         <td style="font-weight:600;">${p.nombre}</td>
         <td><span class="categoria-chip ${catClass[p.categoria]||''}">${p.categoria}</span></td>
-        <td style="text-align:right;font-weight:700;" class="num">${item.stockActual}</td>
+        <td style="text-align:right;font-weight:700;color:${agotado?'var(--rojo)':'inherit'};" class="num">${item.stockActual}</td>
         <td>${p.unidad}</td>
+        <td style="font-weight:600;color:${diasColor};">${diasTxt}</td>
         <td style="font-size:11px;color:var(--gris-medio);">${ult?`${ult.tipo==='entrada'?'↑':'↓'} ${ult.cantidad} · ${ult.fecha} · ${ult.obs||''}`:'—'}</td>
         <td><button class="btn-icon btn-icon-del" title="Eliminar stock" onclick="eliminarInvInstItem(${instId},${item.productoId})">🗑️</button></td>
       </tr>`;
@@ -1921,7 +1982,7 @@ function renderCatalogo(){
   const cat=document.getElementById('filtro-cat-prod')?.value||'';
   const lista=productos.filter(p=>p.nombre.toLowerCase().includes(buscar)&&(!cat||p.categoria===cat));
   document.getElementById('tbl-catalogo').innerHTML=`
-    <thead><tr><th>Producto</th><th>Categoría</th><th>Presentación</th><th>Unidad</th><th>Proveedores</th><th>Precio desde</th><th>Stock actual</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Producto</th><th>Categoría</th><th>Presentación</th><th>Unidad</th><th>Proveedores</th><th>Precio desde</th><th>Acciones</th></tr></thead>
     <tbody>${lista.map(p=>`<tr>
       <td style="font-weight:600;">${esc(p.nombre)}</td>
       <td><span class="categoria-chip ${catClass[p.categoria]||''}">${esc(p.categoria)}</span></td>
@@ -1929,7 +1990,6 @@ function renderCatalogo(){
       <td>${p.unidad}</td>
       <td style="font-size:12px;color:var(--gris-medio);">${esc(nombresProveedoresProd(p))}</td>
       <td class="num">${fmt(precioMin(p))}</td>
-      <td class="num">${p.stockActual}</td>
       <td><div style="display:flex;gap:5px;">
         <button class="btn btn-secondary btn-sm" onclick="editarProducto(${p.id})">Editar</button>
         <button class="btn-icon btn-icon-del" onclick="eliminarProducto(${p.id})">🗑️</button>
@@ -1953,7 +2013,7 @@ function agregarItemProdProveedor(provId='',precio=''){
 }
 
 function abrirModalProd(){
-  ['prod-id','prod-nombre','prod-presentacion','prod-stock-actual'].forEach(id=>document.getElementById(id).value='');
+  ['prod-id','prod-nombre','prod-presentacion'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('prod-proveedores-body').innerHTML='';
   agregarItemProdProveedor();
   document.getElementById('modal-prod-title').textContent='Nuevo Producto';
@@ -1966,7 +2026,6 @@ function editarProducto(id){
   document.getElementById('prod-cat').value=p.categoria;
   document.getElementById('prod-unidad').value=p.unidad;
   document.getElementById('prod-presentacion').value=p.presentacion||'';
-  document.getElementById('prod-stock-actual').value=p.stockActual;
   document.getElementById('prod-proveedores-body').innerHTML='';
   (p.proveedores&&p.proveedores.length?p.proveedores:[{proveedorId:'',precio:''}]).forEach(x=>agregarItemProdProveedor(x.proveedorId,x.precio));
   document.getElementById('modal-prod-title').textContent='Editar Producto';
@@ -1981,7 +2040,7 @@ function guardarProducto(){
     const precio=parseFloat(row.querySelector('input').value)||0;
     if(provId&&precio>0)provedoresArr.push({proveedorId:provId,precio});
   });
-  const datos={nombre,categoria:document.getElementById('prod-cat').value,unidad:document.getElementById('prod-unidad').value,presentacion:document.getElementById('prod-presentacion').value.trim(),proveedores:provedoresArr,stockActual:parseFloat(document.getElementById('prod-stock-actual').value)||0};
+  const datos={nombre,categoria:document.getElementById('prod-cat').value,unidad:document.getElementById('prod-unidad').value,presentacion:document.getElementById('prod-presentacion').value.trim(),proveedores:provedoresArr};
   const id=document.getElementById('prod-id').value;
   if(id){Object.assign(productos.find(p=>p.id===parseInt(id)),datos);}
   else{productos.push({id:nextProdId++,...datos});}
@@ -2003,7 +2062,7 @@ function eliminarProducto(id){
   });
   guardarEstado();
   renderCatalogo();
-  renderInvCentral();
+  renderAlertaStockGlobal();
   renderInvInstSelector();
 }
 
@@ -2020,7 +2079,7 @@ let autoSyncTimer=null;
 let autoSyncEnCurso=false;
 let ultimoSnapshotGuardado='';
 function obtenerEstado(){
-  return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId};
+  return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId,ultimoConsumoFecha};
 }
 function aplicarEstado(d){
   if(d.proveedores)proveedores=d.proveedores;
@@ -2035,6 +2094,7 @@ function aplicarEstado(d){
   if(d.nextProdId)nextProdId=d.nextProdId;
   if(d.nextInstId)nextInstId=d.nextInstId;
   if(d.nextRecetaId)nextRecetaId=d.nextRecetaId;
+  if(d.ultimoConsumoFecha)ultimoConsumoFecha=d.ultimoConsumoFecha;
 }
 function guardarEstado(opts={}){
   try{
@@ -2256,6 +2316,7 @@ async function bajarDatosNube(){
     }
     if(!confirm('Esto reemplazará los datos locales por la copia de la nube. ¿Continuar?')){actualizarEstadoNube();return;}
     aplicarEstado(row.data);
+    aplicarConsumoAutomatico();
     guardarEstado({sync:false});
     if(row.updated_at)localStorage.setItem(LOCAL_UPDATED_KEY,row.updated_at);
     setCloudSyncDate(row.updated_at||new Date().toISOString());
@@ -2278,6 +2339,7 @@ async function sincronizarNube(){
     if(cloudTs&&localTs&&new Date(cloudTs)>new Date(localTs)){
       if(confirm('La nube tiene cambios más recientes. ¿Querés bajar esa versión?')){
         aplicarEstado(row.data);
+        aplicarConsumoAutomatico();
         guardarEstado({sync:false});
         localStorage.setItem(LOCAL_UPDATED_KEY,cloudTs);
         setCloudSyncDate(cloudTs);
@@ -2324,6 +2386,7 @@ function importarBackup(file){
       if(!data.productos||!data.proveedores||!data.instituciones)throw new Error('Formato inválido');
       if(!confirm('Esto reemplazará los datos actuales por el respaldo seleccionado. ¿Continuar?'))return;
       aplicarEstado(data);
+      aplicarConsumoAutomatico();
       guardarEstado();
       document.getElementById('file-import-backup').value='';
       renderDatosResumen();
@@ -2370,10 +2433,10 @@ function descargarPlantillaInstituciones(){
 }
 function descargarPlantillaProductos(){
   descargarWorkbook('plantilla_productos_siscompras.xlsx',[
-    {name:'Productos',widths:[28,20,12,24,30,14,14],rows:[
-      {nombre:'Arroz tipo 1',categoria:'Alimentos Secos',unidad:'kg',presentacion:'Bolsa 5 kg',proveedor:'Distribuidora La Pampa',precio:6500,stock_actual:200},
-      {nombre:'Arroz tipo 1',categoria:'Alimentos Secos',unidad:'kg',presentacion:'Bolsa 5 kg',proveedor:'Alimentos del Este',precio:6400,stock_actual:200},
-      {nombre:'Leche entera',categoria:'Lácteos',unidad:'litro',presentacion:'Caja 1 litro',proveedor:'Lácteos San Miguel',precio:9800,stock_actual:100}
+    {name:'Productos',widths:[28,20,12,24,30,14],rows:[
+      {nombre:'Arroz tipo 1',categoria:'Alimentos Secos',unidad:'kg',presentacion:'Bolsa 5 kg',proveedor:'Distribuidora La Pampa',precio:6500},
+      {nombre:'Arroz tipo 1',categoria:'Alimentos Secos',unidad:'kg',presentacion:'Bolsa 5 kg',proveedor:'Alimentos del Este',precio:6400},
+      {nombre:'Leche entera',categoria:'Lácteos',unidad:'litro',presentacion:'Caja 1 litro',proveedor:'Lácteos San Miguel',precio:9800}
     ]},
     {name:'Instrucciones',widths:[24,92],rows:[
       {campo:'nombre',detalle:'Obligatorio. Nombre del producto. Para varios proveedores, repetir el mismo nombre en varias filas.'},
@@ -2381,8 +2444,7 @@ function descargarPlantillaProductos(){
       {campo:'unidad',detalle:'Valores sugeridos: kg, g, litro, unidad, caja, bolsa.'},
       {campo:'presentacion',detalle:'Texto libre. Ejemplo: Paquete 500 gr, Bolsa 5 kg, Caja 1 litro.'},
       {campo:'proveedor',detalle:'Debe coincidir exactamente con un proveedor ya cargado en Proveedores.'},
-      {campo:'precio',detalle:'Precio unitario en guaraníes, solo números.'},
-      {campo:'stock_actual',detalle:'Stock central inicial. Si repetís el producto por proveedor, podés repetir el mismo stock.'}
+      {campo:'precio',detalle:'Precio unitario en guaraníes, solo números.'}
     ]}
   ]);
 }
@@ -2408,7 +2470,7 @@ function exportarDatosExcel(){
   const wb=XLSX.utils.book_new();
   hojaDesdeJSON(wb,'Proveedores',proveedores);
   hojaDesdeJSON(wb,'Productos',productos.map(p=>({
-    id:p.id,nombre:p.nombre,categoria:p.categoria,unidad:p.unidad,presentacion:p.presentacion,stockActual:p.stockActual,
+    id:p.id,nombre:p.nombre,categoria:p.categoria,unidad:p.unidad,presentacion:p.presentacion,
     proveedores:(p.proveedores||[]).map(x=>`${getProv(x.proveedorId).nombre}: ${x.precio}`).join(' | ')
   })));
   hojaDesdeJSON(wb,'Instituciones',instituciones);
@@ -2443,11 +2505,11 @@ function exportarOrdenesExcel(){
 function renderDatosResumen(){
   actualizarEstadoNube();
   const totalBenef=instituciones.reduce((s,i)=>s+(parseInt(i.beneficiarios)||0),0);
-  const totalInv=productos.reduce((s,p)=>s+(parseFloat(p.stockActual)||0),0);
+  const totalInv=Object.values(invInstituciones).reduce((s,items)=>s+(items||[]).reduce((s2,it)=>s2+(parseFloat(it.stockActual)||0),0),0);
   const totalOrdenes=ordenes.reduce((s,o)=>s+totalOC(o),0);
   const filas=[
     ['Proveedores',proveedores.length,'Registro de empresas proveedoras'],
-    ['Productos',productos.length,`${fmtNum(totalInv,2)} unidades en stock central`],
+    ['Productos',productos.length,`${fmtNum(totalInv,2)} unidades en stock (todas las instituciones)`],
     ['Instituciones',instituciones.length,`${totalBenef} beneficiarios registrados`],
     ['Recetas',recetas.length,'Recetas disponibles para el menú'],
     ['Días planificados',Object.keys(menuSemanal).length,'Asignaciones en menú semanal'],
@@ -2529,7 +2591,6 @@ function importarProductos(file){
       const categoria=String(normKey(row,['categoria'])||'Alimentos Secos').trim();
       const unidad=String(normKey(row,['unidad'])||'kg').trim();
       const presentacion=String(normKey(row,['presentacion','presentación'])).trim();
-      const stockActual=parseFloat(normKey(row,['stock_actual','stock','stockactual']))||0;
       const provNombre=String(normKey(row,['proveedor'])).trim();
       const precio=parseFloat(normKey(row,['precio']))||0;
 
@@ -2541,12 +2602,11 @@ function importarProductos(file){
 
       let prod=productos.find(p=>p.nombre.toLowerCase()===nombre.toLowerCase());
       if(!prod){
-        prod={id:nextProdId++,nombre,categoria,unidad,presentacion,stockActual,proveedores:[]};
+        prod={id:nextProdId++,nombre,categoria,unidad,presentacion,proveedores:[]};
         productos.push(prod);
         creados++;
       } else {
         if(presentacion)prod.presentacion=presentacion;
-        if(stockActual)prod.stockActual=stockActual;
         actualizados++;
       }
       if(prov && precio>0){
@@ -2562,7 +2622,7 @@ function importarProductos(file){
       <div class="alert alert-warn" style="background:var(--verde-suave);color:var(--verde);">✅ ${creados} producto(s) nuevo(s), ${actualizados} fila(s) de precio/proveedor aplicadas.</div>
       ${omitidas?`<div class="alert alert-warn">⚠️ ${omitidas} fila(s) omitida(s) por falta de nombre.</div>`:''}
       ${provNoEncontrado?`<div class="alert alert-warn">⚠️ ${provNoEncontrado} fila(s) con proveedor no encontrado (verificá que el nombre coincida exactamente con uno ya cargado en Proveedores).</div>`:''}
-      <div style="font-size:12px;color:var(--gris-medio);margin-top:8px;">Columnas esperadas: nombre, categoria, unidad, presentacion, proveedor, precio, stock_actual. Para un producto con varios proveedores, usá una fila por proveedor con el mismo nombre de producto.</div>
+      <div style="font-size:12px;color:var(--gris-medio);margin-top:8px;">Columnas esperadas: nombre, categoria, unidad, presentacion, proveedor, precio. Para un producto con varios proveedores, usá una fila por proveedor con el mismo nombre de producto.</div>
     `);
   });
 }
@@ -2613,6 +2673,7 @@ function importarRecetas(file){
 
 // INIT
 cargarEstado();
+aplicarConsumoAutomatico();
 iniciarGuardadoAutomatico();
 renderDashboard();
 actualizarEstadoNube();
