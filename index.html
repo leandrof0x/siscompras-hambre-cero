@@ -377,6 +377,9 @@ textarea{resize:vertical;min-height:65px;}
     <div class="view" id="view-inventario">
       <div id="inv-central-view">
         <div id="alert-stock-bajo"></div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+          <button class="btn btn-primary btn-sm" onclick="abrirModalCargaRapida()">⚡ Carga rápida de inventario</button>
+        </div>
         <div id="inv-tab-inst">
           <div class="grid-3" id="inv-inst-selector"></div>
         </div>
@@ -389,6 +392,7 @@ textarea{resize:vertical;min-height:65px;}
             <div style="font-size:12px;color:var(--gris-medio);" id="inv-inst-info"></div>
           </div>
           <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="abrirModalCargaRapida(invInstActual)">⚡ Carga rápida</button>
             <button class="btn btn-secondary btn-sm" onclick="abrirModalAgregarInvInst()">+ Agregar inventario</button>
             <button class="btn btn-primary btn-sm" onclick="abrirModalMovimiento()">+ Registrar movimiento</button>
           </div>
@@ -799,6 +803,29 @@ with check (true);</textarea>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-movimiento')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarMovimiento()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-carga-rapida">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Carga rápida de inventario</div>
+      <button class="modal-close" onclick="closeModal('modal-carga-rapida')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Institución</label><select id="cr-institucion" onchange="renderTablaCargaRapida()"></select></div>
+      <div class="form-group"><label>Fecha del conteo</label><input type="date" id="cr-fecha"></div>
+    </div>
+    <div class="form-row single"><div class="form-group"><label>Observación (opcional)</label><input type="text" id="cr-obs" placeholder="Ej: Conteo según fotos enviadas por la cocinera"></div></div>
+    <div class="search-bar" style="margin-top:4px;">
+      <div class="search-input"><input type="text" id="cr-buscar" placeholder="Buscar producto..." oninput="filtrarTablaCargaRapida()"></div>
+    </div>
+    <div style="font-size:12px;color:var(--gris-medio);margin:6px 0 4px;">Escribí el stock actual (conteo físico) solo en los productos que estás actualizando. Los que dejes vacíos no se modifican. Usá Tab para moverte rápido entre campos.</div>
+    <div class="card"><div class="table-wrap" style="max-height:50vh;"><table id="tbl-carga-rapida"></table></div></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-carga-rapida')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCargaRapida()">Guardar inventario</button>
     </div>
   </div>
 </div>
@@ -1792,13 +1819,14 @@ function renderTablaInvInst(instId){
         diasTxt=`~${Math.floor(diasRestantes)} día(s)`;
         diasColor=diasRestantes<UMBRAL_DIAS_ALERTA?'var(--rojo)':'var(--verde-claro)';
       }
+      const iconoMov=ult?(ult.tipo==='entrada'?'↑':ult.tipo==='ajuste'?'≈':'↓'):'';
       return `<tr>
         <td style="font-weight:600;">${p.nombre}</td>
         <td><span class="categoria-chip ${catClass[p.categoria]||''}">${p.categoria}</span></td>
         <td style="text-align:right;font-weight:700;color:${agotado?'var(--rojo)':'inherit'};" class="num">${item.stockActual}</td>
         <td>${p.unidad}</td>
         <td style="font-weight:600;color:${diasColor};">${diasTxt}</td>
-        <td style="font-size:11px;color:var(--gris-medio);">${ult?`${ult.tipo==='entrada'?'↑':'↓'} ${ult.cantidad} · ${ult.fecha} · ${ult.obs||''}`:'—'}</td>
+        <td style="font-size:11px;color:var(--gris-medio);">${ult?`${iconoMov} ${ult.cantidad} · ${ult.fecha} · ${ult.obs||''}`:'—'}</td>
         <td><button class="btn-icon btn-icon-del" title="Eliminar stock" onclick="eliminarInvInstItem(${instId},${item.productoId})">🗑️</button></td>
       </tr>`;
     }).join('')}</tbody>
@@ -1888,6 +1916,82 @@ function guardarMovimiento(){
   guardarEstado();
   renderTablaInvInst(invInstActual);
 }
+
+// =============================================
+// CARGA RÁPIDA DE INVENTARIO (conteo físico por institución)
+// =============================================
+function abrirModalCargaRapida(instIdPreseleccionada){
+  const sel=document.getElementById('cr-institucion');
+  sel.innerHTML=instituciones.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}</option>`).join('');
+  if(instIdPreseleccionada)sel.value=instIdPreseleccionada;
+  document.getElementById('cr-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('cr-obs').value='';
+  document.getElementById('cr-buscar').value='';
+  renderTablaCargaRapida();
+  openModal('modal-carga-rapida');
+}
+
+function renderTablaCargaRapida(){
+  const instId=parseInt(document.getElementById('cr-institucion').value);
+  const items=invInstituciones[instId]||[];
+  const porProducto={};
+  items.forEach(it=>{porProducto[it.productoId]=it.stockActual;});
+  const lista=[...productos].sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.nombre.localeCompare(b.nombre));
+  document.getElementById('tbl-carga-rapida').innerHTML=`
+    <thead><tr><th>Producto</th><th>Categoría</th><th>Unidad</th><th style="text-align:right;width:140px;">Stock actual</th></tr></thead>
+    <tbody>${lista.map(p=>{
+      const actual=porProducto.hasOwnProperty(p.id)?porProducto[p.id]:null;
+      return `<tr data-cr-nombre="${esc(p.nombre.toLowerCase())}">
+        <td style="font-weight:600;">${esc(p.nombre)}</td>
+        <td><span class="categoria-chip ${catClass[p.categoria]||''}">${esc(p.categoria)}</span></td>
+        <td>${esc(p.unidad)}</td>
+        <td style="text-align:right;"><input type="number" min="0" step="0.1" class="cr-input" data-prod="${p.id}" placeholder="${actual!=null?actual:'—'}" style="width:110px;text-align:right;"></td>
+      </tr>`;
+    }).join('')}</tbody>
+  `;
+  filtrarTablaCargaRapida();
+}
+
+function filtrarTablaCargaRapida(){
+  const buscar=(document.getElementById('cr-buscar').value||'').toLowerCase();
+  document.querySelectorAll('#tbl-carga-rapida tbody tr').forEach(tr=>{
+    tr.style.display=tr.dataset.crNombre.includes(buscar)?'':'none';
+  });
+}
+
+function guardarCargaRapida(){
+  const instId=parseInt(document.getElementById('cr-institucion').value);
+  const fecha=document.getElementById('cr-fecha').value||new Date().toISOString().split('T')[0];
+  const obsBase=document.getElementById('cr-obs').value.trim()||'Conteo de inventario';
+  const items=invInstituciones[instId]||(invInstituciones[instId]=[]);
+
+  let actualizados=0;
+  document.querySelectorAll('#tbl-carga-rapida .cr-input').forEach(input=>{
+    const val=input.value;
+    if(val===''||val===null)return; // vacío = no se toca
+    const nuevoStock=parseFloat(val);
+    if(isNaN(nuevoStock)||nuevoStock<0)return;
+    const prodId=parseInt(input.dataset.prod);
+    let item=items.find(i=>i.productoId===prodId);
+    if(!item){item={productoId:prodId,stockActual:0,movimientos:[]};items.push(item);}
+    const anterior=item.stockActual;
+    if(nuevoStock===anterior)return; // sin cambios, no genera movimiento
+    item.movimientos.push({tipo:'ajuste',cantidad:nuevoStock,anterior,fecha,obs:obsBase});
+    item.stockActual=nuevoStock;
+    actualizados++;
+  });
+
+  if(!actualizados){alert('No se ingresó ningún valor nuevo.');return;}
+
+  guardarEstado();
+  closeModal('modal-carga-rapida');
+  if(invInstActual===instId)renderTablaInvInst(instId);
+  renderInvInstSelector();
+  renderAlertaStockGlobal();
+  renderDashboard();
+  alert(`✅ Inventario actualizado: ${actualizados} producto(s) en ${esc(getInst(instId).nombre)}.`);
+}
+
 function eliminarInvInstItem(instId,productoId){
   const inst=getInst(instId);
   const prod=getProd(productoId);
