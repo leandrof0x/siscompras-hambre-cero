@@ -1861,11 +1861,33 @@ function renderAlertaStockGlobal(){
 const alertas=getAlertasStock();
 const alertEl=document.getElementById('alert-stock-bajo');
 if(!alertas.length){alertEl.innerHTML='';return;}
-const items=alertas.slice(0,8).map(a=>{
-const txt=a.item.stockActual<=0?'sin stock':`quedan ~${Math.floor(a.diasRestantes)} día(s)`;
-return `<strong>${esc(a.producto.nombre)}</strong> en ${esc(a.inst.nombre)} (${txt})`;
-}).join(', ');
-alertEl.innerHTML=`<div class="alert alert-warn">⚠️ ${alertas.length} alerta(s) de stock: ${items}${alertas.length>8?'…':''}</div>`;
+const LIMITE=6;
+const mostrar=alertas.slice(0,LIMITE);
+const resto=alertas.length-LIMITE;
+alertEl.innerHTML=`
+  <div class="card" style="border-left:4px solid var(--rojo);margin-bottom:18px;">
+    <div class="card-header" style="padding:14px 18px;">
+      <div>
+        <div class="card-title" style="color:var(--rojo);">⚠️ ${alertas.length} alerta${alertas.length===1?'':'s'} de stock</div>
+        <div class="card-sub">Productos agotados o por agotarse pronto, por institución</div>
+      </div>
+    </div>
+    <div style="padding:0 18px 6px;">
+      ${mostrar.map(a=>{
+        const agotado=a.item.stockActual<=0;
+        const txt=agotado?'Sin stock':`~${Math.floor(a.diasRestantes)} día(s)`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--gris-claro);font-size:13px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;">${esc(a.producto.nombre)}</div>
+            <div style="font-size:11px;color:var(--gris-medio);">${esc(a.inst.nombre)}</div>
+          </div>
+          <span class="badge ${agotado?'badge-rojo':'badge-amarillo'}" style="white-space:nowrap;">${txt}</span>
+        </div>`;
+      }).join('')}
+      ${resto>0?`<div style="font-size:12px;color:var(--gris-medio);padding:10px 0 4px;">y ${resto} alerta(s) más...</div>`:''}
+    </div>
+  </div>
+`;
 }
 function renderInvInstSelector(){
 const alertas=getAlertasStock();
