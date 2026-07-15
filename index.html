@@ -1376,7 +1376,7 @@ ${oc.obs?`<div class="alert alert-warn">📝 ${oc.obs}</div>`:''}
 </table>
 `;
 const actions=document.getElementById('ver-oc-actions');
-actions.innerHTML=`<button class="btn btn-secondary" onclick="closeModal('ver-oc')">Cerrar</button>`;
+actions.innerHTML=`<button class="btn btn-secondary" onclick="closeModal('modal-ver-oc')">Cerrar</button>`;
 if(oc.estado==='Borrador')actions.innerHTML+=`<button class="btn btn-secondary" onclick="closeModal('modal-ver-oc');editarOC(${oc.id})">Editar</button><button class="btn btn-primary" onclick="enviarDesdeVer(${oc.id})">Enviar orden</button>`;
 if(oc.estado==='Enviada')actions.innerHTML+=`<button class="btn btn-primary" onclick="recibirDesdeVer(${oc.id})">✓ Marcar recibida</button>`;
 actions.innerHTML+=`<button class="btn btn-secondary" onclick="imprimirOC(${oc.id})">🖨️ Imprimir</button>`;
@@ -1392,22 +1392,7 @@ renderTablaOrdenes();
 }
 function recibirDesdeVer(id){recibirOC(id);closeModal('modal-ver-oc');}
 function enviarDesdeVer(id){ordenes.find(o=>o.id===id).estado='Enviada';closeModal('modal-ver-oc');renderTablaOrdenes();}
-// =============================================
-// MENÚ SEMANAL (MODIFICADO: estado vacío si no hay menú en la semana)
-// =============================================
-function renderMenuSemanal(){
-const lunes=getLunesSemana(currentSemanaOffset);
-const fin=new Date(lunes);fin.setDate(lunes.getDate()+6);
-document.getElementById('menu-semana-titulo').textContent=`Semana ${currentSemanaOffset===0?'actual':currentSemanaOffset>0?'siguiente':'anterior'}`;
-document.getElementById('menu-semana-rango').textContent=`${lunes.toLocaleDateString('es-PY',{day:'numeric',month:'long'})} al ${fin.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'})}`;
-// Detectar si hay menú en esta semana
-let hayMenuEnSemana=false;
-for(let d=0;d<7;d++){
-const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-const key=fechaStr(fecha);
-// =============================================
-// IMPRESIÓN DE ORDEN DE COMPRA (plantilla moderna)
-// =============================================
+
 function imprimirOC(id){
   const oc=ordenes.find(o=>o.id===id);
   const prov=getProv(oc.proveedorId);
@@ -1503,6 +1488,19 @@ function imprimirOC(id){
 }
 window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-oc');});
 
+// =============================================
+// MENÚ SEMANAL (MODIFICADO: estado vacío si no hay menú en la semana)
+// =============================================
+function renderMenuSemanal(){
+const lunes=getLunesSemana(currentSemanaOffset);
+const fin=new Date(lunes);fin.setDate(lunes.getDate()+6);
+document.getElementById('menu-semana-titulo').textContent=`Semana ${currentSemanaOffset===0?'actual':currentSemanaOffset>0?'siguiente':'anterior'}`;
+document.getElementById('menu-semana-rango').textContent=`${lunes.toLocaleDateString('es-PY',{day:'numeric',month:'long'})} al ${fin.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'})}`;
+// Detectar si hay menú en esta semana
+let hayMenuEnSemana=false;
+for(let d=0;d<7;d++){
+const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
+const key=fechaStr(fecha);
 if(menuSemanal[key]){hayMenuEnSemana=true;break;}
 }
 const emptyContainer=document.getElementById('menu-empty-container');
