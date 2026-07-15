@@ -203,7 +203,11 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 .sidebar,.topbar,.btn,.modal-backdrop,.toast-container{display:none!important;}
 .main{margin-left:0;}
 .content{padding:0;}
+  body.printing-oc *{visibility:hidden;}
+  body.printing-oc #oc-print-area,body.printing-oc #oc-print-area *{visibility:visible;}
+  body.printing-oc #oc-print-area{display:block!important;position:absolute;top:0;left:0;width:100%;}
 }
+#oc-print-area{display:none;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -425,6 +429,28 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 </div>
 <span class="badge badge-gris" id="cloud-status">Sin configurar</span>
 </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Datos de mi empresa</div>
+            <div class="card-sub">Se usan en el encabezado de las órdenes de compra impresas</div>
+          </div>
+        </div>
+        <div style="padding:18px;">
+          <div class="form-row">
+            <div class="form-group"><label>Nombre / Razón social</label><input type="text" id="emp-nombre" placeholder="Ej: Dpto. de Compras - Hambre Cero"></div>
+            <div class="form-group"><label>RUC</label><input type="text" id="emp-ruc" placeholder="80000000-0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Encargado</label><input type="text" id="emp-encargado" placeholder="Nombre del responsable"></div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="emp-telefono" placeholder="0981 000 000"></div>
+          </div>
+          <div class="form-row single">
+            <div class="form-group"><label>Email</label><input type="text" id="emp-email" placeholder="compras@midominio.com"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="guardarDatosEmpresa()">Guardar datos de empresa</button>
+        </div>
+      </div>
 <div style="padding:18px;">
 <div class="alert alert-info">La app sigue funcionando sin internet. Con Supabase configurado, cada cambio se sube automáticamente a la nube; también podés usar los botones para forzar una sincronización.</div>
 
@@ -539,6 +565,9 @@ with check (true);</textarea>
 </div>
 <div class="form-row single">
 <div class="form-group"><label>Observaciones</label><textarea id="oc-obs" placeholder="Instrucciones de entrega, condiciones..."></textarea></div>
+</div>
+<div class="form-row single">
+  <div class="form-group"><label>Lugar de entrega (institución)</label><select id="oc-institucion"><option value="">— No especificar —</option></select></div>
 </div>
 <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Productos</div>
 <div class="oc-items">
@@ -844,6 +873,8 @@ with check (true);</textarea>
 </div>
 </div>
 </div>
+<div id="oc-print-area"></div>
+
 <script>
 // =============================================
 // DATOS
@@ -937,6 +968,7 @@ let ordenes = [
 {id:3,numero:"OC-2026-003",proveedorId:2,fecha:"2026-06-10",fechaEntrega:"2026-06-12",estado:"Enviada",obs:"Confirmar cadena de frío",items:[{productoId:8,cantidad:50,precio:28000},{productoId:9,cantidad:80,precio:18500}]},
 ];
 let nextOCId=4, nextProvId=6, nextProdId=15, nextInstId=5, nextRecetaId=5;
+let datosEmpresa={nombre:'',ruc:'',encargado:'',telefono:'',email:''};
 let ocEditId=null, currentSemanaOffset=0, invInstActual=null;
 // Consumo automático de stock por institución según el menú semanal
 let ultimoConsumoFecha=null; // última fecha (YYYY-MM-DD) hasta la que ya se descontó stock
@@ -1217,6 +1249,8 @@ document.getElementById('oc-obs').value='';
 if(editId){
 const oc=ordenes.find(o=>o.id===editId);
 document.getElementById('modal-oc-title').textContent='Editar Orden';
+  const selInst=document.getElementById('oc-institucion');
+  selInst.innerHTML='<option value="">— No especificar —</option>'+instituciones.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}</option>`).join('');
 document.getElementById('modal-oc-num').textContent=oc.numero;
 sel.value=oc.proveedorId;
 document.getElementById('oc-fecha').value=oc.fechaEntrega||hoy;
@@ -1225,6 +1259,7 @@ document.getElementById('oc-items-body').innerHTML='';
 oc.items.forEach(i=>agregarItemOC(i.productoId,i.cantidad,i.precio,i.proveedorId));
 } else {
 document.getElementById('modal-oc-title').textContent='Nueva Orden de Compra';
+    selInst.value=oc.instId||'';
 document.getElementById('modal-oc-num').textContent='OC-2026-'+String(nextOCId).padStart(3,'0');
 document.getElementById('oc-fecha').value=hoy;
 document.getElementById('oc-items-body').innerHTML='';
@@ -1304,12 +1339,13 @@ const precio=parseFloat(row.querySelectorAll('input')[1].value)||0;
 if(prodId&&cant>0)items.push({productoId:prodId,proveedorId:provItemId,cantidad:cant,precio});
 });
 if(!items.length){alert('Agregá al menos un ítem con producto y cantidad.');return;}
+  const instId=parseInt(document.getElementById('oc-institucion').value)||null;
 const hoy=new Date().toISOString().split('T')[0];
 if(ocEditId){
 const oc=ordenes.find(o=>o.id===ocEditId);
-Object.assign(oc,{proveedorId:provId,fechaEntrega:fechaEnt,obs,items,estado});
+Object.assign(oc,{proveedorId:provId,fechaEntrega:fechaEnt,instId,obs,items,estado});
 } else {
-ordenes.push({id:nextOCId,numero:"OC-2026-"+String(nextOCId).padStart(3,'0'),proveedorId:provId,fecha:hoy,fechaEntrega:fechaEnt,estado,obs,items});
+ordenes.push({id:nextOCId,numero:"OC-2026-"+String(nextOCId).padStart(3,'0'),proveedorId:provId,fecha:hoy,fechaEntrega:fechaEnt,instId,estado,obs,items});
 nextOCId++;
 }
 closeModal('modal-oc');
@@ -1327,10 +1363,11 @@ const provNombre=i.proveedorId?esc(getProv(i.proveedorId).nombre):'—';
 return `<tr><td>${esc(p.nombre)}<div style="font-size:11px;color:var(--gris-medio);">${provNombre}</div></td><td style="text-align:right;">${i.cantidad} ${p.unidad}</td><td style="text-align:right;" class="num">${fmt(i.precio)}</td><td style="text-align:right;" class="num"><strong>${fmt(i.cantidad*i.precio)}</strong></td></tr>`;
 }).join('');
 document.getElementById('ver-oc-body').innerHTML=`
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
 <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);">Proveedor</div><div style="font-size:13px;font-weight:600;">${prov.nombre}</div></div>
 <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);">Fecha</div><div style="font-size:13px;">${oc.fecha}</div></div>
 <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);">Entrega</div><div style="font-size:13px;">${oc.fechaEntrega||'—'}</div></div>
+<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);">Lugar</div><div style="font-size:13px;">${oc.instId?esc(getInst(oc.instId).nombre):'—'}</div></div>
 </div>
 ${oc.obs?`<div class="alert alert-warn">📝 ${oc.obs}</div>`:''}
 <table><thead><tr><th>Producto</th><th style="text-align:right;">Cant.</th><th style="text-align:right;">Precio unit.</th><th style="text-align:right;">Subtotal</th></tr></thead>
@@ -1342,7 +1379,7 @@ const actions=document.getElementById('ver-oc-actions');
 actions.innerHTML=`<button class="btn btn-secondary" onclick="closeModal('ver-oc')">Cerrar</button>`;
 if(oc.estado==='Borrador')actions.innerHTML+=`<button class="btn btn-secondary" onclick="closeModal('modal-ver-oc');editarOC(${oc.id})">Editar</button><button class="btn btn-primary" onclick="enviarDesdeVer(${oc.id})">Enviar orden</button>`;
 if(oc.estado==='Enviada')actions.innerHTML+=`<button class="btn btn-primary" onclick="recibirDesdeVer(${oc.id})">✓ Marcar recibida</button>`;
-actions.innerHTML+=`<button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir</button>`;
+actions.innerHTML+=`<button class="btn btn-secondary" onclick="imprimirOC(${oc.id})">🖨️ Imprimir</button>`;
 openModal('modal-ver-oc');
 }
 function editarOC(id){abrirModalOC(id);}
@@ -1368,6 +1405,104 @@ let hayMenuEnSemana=false;
 for(let d=0;d<7;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
+// =============================================
+// IMPRESIÓN DE ORDEN DE COMPRA (plantilla moderna)
+// =============================================
+function imprimirOC(id){
+  const oc=ordenes.find(o=>o.id===id);
+  const prov=getProv(oc.proveedorId);
+  const inst=oc.instId?getInst(oc.instId):null;
+  const emp=datosEmpresa||{};
+
+  const filasItems=oc.items.map(i=>{
+    const p=getProd(i.productoId);
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;">${esc(String(i.cantidad))}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;">${esc(p.unidad)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;">${esc(p.nombre)}${p.presentacion?`<div style="font-size:10px;color:#888;">${esc(p.presentacion)}</div>`:''}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${fmt(i.precio)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${fmt(i.cantidad*i.precio)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('oc-print-area').innerHTML=`
+    <div style="max-width:800px;margin:24px auto;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;padding:0 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #2f6f4f;padding-bottom:16px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:19px;font-weight:800;color:#2f6f4f;">${esc(emp.nombre||'Mi Organización')}</div>
+          <div style="font-size:11px;color:#555;margin-top:4px;line-height:1.6;">
+            ${emp.ruc?`RUC: ${esc(emp.ruc)}<br>`:''}
+            ${emp.encargado?`Encargado: ${esc(emp.encargado)}<br>`:''}
+            ${emp.telefono?`Tel: ${esc(emp.telefono)}${emp.email?' · ':''}`:''}${emp.email?esc(emp.email):''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="display:inline-block;background:#2f6f4f;color:#fff;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.6px;">ORDEN DE COMPRA</div>
+          <div style="font-size:20px;font-weight:800;margin-top:8px;">${esc(oc.numero)}</div>
+          <div style="font-size:11px;color:#555;">Fecha de emisión: ${oc.fecha}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;font-size:12px;">
+        <div style="border:1px solid #ddd;border-radius:8px;padding:12px;">
+          <div style="font-size:10px;text-transform:uppercase;color:#888;font-weight:700;margin-bottom:6px;">Proveedor</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:2px;">${esc(prov.nombre)}</div>
+          ${prov.ruc?`<div>RUC: ${esc(prov.ruc)}</div>`:''}
+          ${prov.dir?`<div>${esc(prov.dir)}</div>`:''}
+          ${prov.contacto?`<div>Contacto: ${esc(prov.contacto)}</div>`:''}
+          ${prov.tel?`<div>Tel: ${esc(prov.tel)}</div>`:''}
+        </div>
+        <div style="border:1px solid #ddd;border-radius:8px;padding:12px;">
+          <div style="font-size:10px;text-transform:uppercase;color:#888;font-weight:700;margin-bottom:6px;">Entrega</div>
+          <div>Fecha estimada: <strong>${oc.fechaEntrega||'—'}</strong></div>
+          ${inst?`<div style="margin-top:2px;">Lugar: <strong>${esc(inst.nombre)}</strong></div><div>${esc(inst.dir||'')}</div>`:'<div style="color:#999;">Lugar no especificado</div>'}
+        </div>
+      </div>
+
+      ${oc.obs?`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:18px;"><strong>Observaciones:</strong> ${esc(oc.obs)}</div>`:''}
+
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:22px;">
+        <thead>
+          <tr style="background:#2f6f4f;color:#fff;">
+            <th style="padding:9px 8px;text-align:left;">Cant.</th>
+            <th style="padding:9px 8px;text-align:left;">Unidad</th>
+            <th style="padding:9px 8px;text-align:left;">Producto</th>
+            <th style="padding:9px 8px;text-align:right;">Precio unit.</th>
+            <th style="padding:9px 8px;text-align:right;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${filasItems}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align:right;font-weight:700;padding:12px 8px;border-top:2px solid #2f6f4f;">TOTAL</td>
+            <td style="text-align:right;font-weight:800;padding:12px 8px;border-top:2px solid #2f6f4f;color:#2f6f4f;">${fmt(totalOC(oc))}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="border:1px dashed #bbb;border-radius:8px;padding:12px 14px;font-size:11px;color:#555;margin-bottom:40px;">
+        <div style="font-weight:700;text-transform:uppercase;font-size:10px;color:#888;margin-bottom:8px;">Control de recepción (a completar por el proveedor)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+          <div>Fecha de recepción:<div style="border-bottom:1px solid #999;height:22px;"></div></div>
+          <div>Firma de quien recibe:<div style="border-bottom:1px solid #999;height:22px;"></div></div>
+          <div>Comentario:<div style="border-bottom:1px solid #999;height:22px;"></div></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;font-size:12px;text-align:center;">
+        <div><div style="border-top:1px solid #333;padding-top:6px;">Hecho por${emp.encargado?`<br><strong>${esc(emp.encargado)}</strong>`:''}</div></div>
+        <div><div style="border-top:1px solid #333;padding-top:6px;">Autorizado por</div></div>
+      </div>
+    </div>
+  `;
+
+  document.body.classList.add('printing-oc');
+  setTimeout(()=>{
+    window.print();
+  },50);
+}
+window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-oc');});
+
 if(menuSemanal[key]){hayMenuEnSemana=true;break;}
 }
 const emptyContainer=document.getElementById('menu-empty-container');
@@ -2124,7 +2259,7 @@ let autoSyncTimer=null;
 let autoSyncEnCurso=false;
 let ultimoSnapshotGuardado='';
 function obtenerEstado(){
-return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId,ultimoConsumoFecha};
+return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId,ultimoConsumoFecha,datosEmpresa};
 }
 function aplicarEstado(d){
 if(d.proveedores)proveedores=d.proveedores;
@@ -2187,6 +2322,7 @@ if(!el)return;
 const colores={info:'var(--gris-medio)',ok:'var(--verde)',error:'var(--rojo)',warn:'#7a5206'};
 el.style.color=colores[tipo]||colores.info;
 el.textContent=msg;
+  if(d.datosEmpresa)datosEmpresa=d.datosEmpresa;
 }
 function cargarConfigAuth(){/* no-op: config Supabase desde sección Datos */}
 function guardarConfigAuth(){return true;}
@@ -2596,6 +2732,11 @@ reader.onerror=()=>showToast('Error al leer el archivo.','error');
 reader.readAsArrayBuffer(file);
 }
 function normKey(obj,keys){
+  document.getElementById('emp-nombre').value=datosEmpresa.nombre||'';
+  document.getElementById('emp-ruc').value=datosEmpresa.ruc||'';
+  document.getElementById('emp-encargado').value=datosEmpresa.encargado||'';
+  document.getElementById('emp-telefono').value=datosEmpresa.telefono||'';
+  document.getElementById('emp-email').value=datosEmpresa.email||'';
 const map={};
 Object.keys(obj).forEach(k=>map[k.trim().toLowerCase()]=obj[k]);
 for(const k of keys){if(map[k]!==undefined && map[k]!=='')return map[k];}
@@ -2613,6 +2754,18 @@ filas.forEach(row=>{
 const nombre=String(normKey(row,['nombre','institucion','escuela'])).trim();
 if(!nombre){omitidas++;return;}
 const tipo=String(normKey(row,['tipo'])||'Escuela').trim();
+function guardarDatosEmpresa(){
+  datosEmpresa={
+    nombre:document.getElementById('emp-nombre').value.trim(),
+    ruc:document.getElementById('emp-ruc').value.trim(),
+    encargado:document.getElementById('emp-encargado').value.trim(),
+    telefono:document.getElementById('emp-telefono').value.trim(),
+    email:document.getElementById('emp-email').value.trim(),
+  };
+  guardarEstado();
+  alert('✅ Datos de empresa guardados.');
+}
+
 const beneficiarios=parseInt(normKey(row,['beneficiarios','cantidad','alumnos']))||0;
 const resp=String(normKey(row,['responsable','resp'])).trim();
 const tel=String(normKey(row,['telefono','tel'])).trim();
