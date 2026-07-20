@@ -592,14 +592,14 @@ with check (true);</textarea>
 <button class="modal-close" onclick="closeModal('modal-oc')">×</button>
 </div>
 <div class="form-row">
-<div class="form-group"><label>Proveedor *</label><select id="oc-proveedor"></select></div>
+<div class="form-group"><label>Proveedor *</label><select id="oc-proveedor" onchange="filtrarInstOC()"></select></div>
 <div class="form-group"><label>Fecha entrega estimada</label><input type="date" id="oc-fecha"></div>
 </div>
 <div class="form-row single">
 <div class="form-group"><label>Observaciones</label><textarea id="oc-obs" placeholder="Instrucciones de entrega, condiciones..."></textarea></div>
 </div>
 <div class="form-row single">
-  <div class="form-group"><label>Lugar de entrega (institución)</label><select id="oc-institucion"><option value="">— No especificar —</option></select></div>
+  <div class="form-group"><label>Lugar de entrega (institución)</label><select id="oc-institucion"><option value="">— No especificar —</option></select><div id="oc-inst-nota" style="font-size:11px;color:var(--gris-medio);margin-top:4px;"></div></div>
 </div>
 <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Productos</div>
 <div class="oc-items">
@@ -767,6 +767,10 @@ with check (true);</textarea>
 <div class="form-group"><label>Teléfono</label><input type="text" id="prov-tel"></div>
 </div>
 <div class="form-row single"><div class="form-group"><label>Dirección</label><input type="text" id="prov-dir"></div></div>
+<div class="form-group" style="margin-bottom:14px;">
+<label>Instituciones asignadas <span style="font-weight:400;color:var(--gris-medio);">(a dónde entrega este proveedor)</span></label>
+<div id="prov-inst-checks" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid var(--gris-claro);border-radius:8px;padding:10px;"></div>
+</div>
 <div class="form-actions">
 <button class="btn btn-secondary" onclick="closeModal('modal-prov')">Cancelar</button>
 <button class="btn btn-primary" onclick="guardarProveedor()">Guardar</button>
@@ -1318,24 +1322,37 @@ document.getElementById('oc-obs').value='';
 if(editId){
 const oc=ordenes.find(o=>o.id===editId);
 document.getElementById('modal-oc-title').textContent='Editar Orden';
-  const selInst=document.getElementById('oc-institucion');
-  selInst.innerHTML='<option value="">— No especificar —</option>'+instituciones.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}</option>`).join('');
 document.getElementById('modal-oc-num').textContent=oc.numero;
 sel.value=oc.proveedorId;
+filtrarInstOC(oc.instId);
 document.getElementById('oc-fecha').value=oc.fechaEntrega||hoy;
 document.getElementById('oc-obs').value=oc.obs;
 document.getElementById('oc-items-body').innerHTML='';
 oc.items.forEach(i=>agregarItemOC(i.productoId,i.cantidad,i.precio,i.proveedorId));
 } else {
 document.getElementById('modal-oc-title').textContent='Nueva Orden de Compra';
-    selInst.value=oc.instId||'';
 document.getElementById('modal-oc-num').textContent='OC-2026-'+String(nextOCId).padStart(3,'0');
+filtrarInstOC();
 document.getElementById('oc-fecha').value=hoy;
 document.getElementById('oc-items-body').innerHTML='';
 agregarItemOC();
 }
 calcularTotalOC();
 openModal('modal-oc');
+}
+function filtrarInstOC(seleccionActual){
+const provId=parseInt(document.getElementById('oc-proveedor').value);
+const prov=proveedores.find(p=>p.id===provId);
+const asignadas=(prov&&prov.institucionesAsignadas)||[];
+const selInst=document.getElementById('oc-institucion');
+const valorPrevio=seleccionActual!==undefined?seleccionActual:(parseInt(selInst.value)||'');
+const lista=asignadas.length?instituciones.filter(i=>asignadas.includes(i.id)):instituciones;
+selInst.innerHTML='<option value="">— No especificar —</option>'+lista.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}</option>`).join('');
+selInst.value=lista.some(i=>i.id===valorPrevio)?valorPrevio:'';
+const nota=document.getElementById('oc-inst-nota');
+if(!prov){nota.textContent='';}
+else if(asignadas.length){nota.textContent=`Mostrando solo las ${asignadas.length} institución(es) asignada(s) a ${prov.nombre}.`;}
+else{nota.textContent='Este proveedor no tiene instituciones asignadas — se muestran todas. Podés asignarlas en Proveedores.';}
 }
 function agregarItemOC(prodId='',cant=1,precio='',provId=''){
 const div=document.createElement('div');
@@ -2352,14 +2369,29 @@ ${p.contacto?`<div>👤 ${esc(p.contacto)}</div>`:''}
 ${p.tel?`<div>📱 ${esc(p.tel)}</div>`:''}
 ${p.dir?`<div>📍 ${esc(p.dir)}</div>`:''}
 </div>
+<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--gris-claro);">
+<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);margin-bottom:5px;">Instituciones asignadas</div>
+${(p.institucionesAsignadas||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:5px;">${p.institucionesAsignadas.map(iid=>{const i=getInst(iid);return `<span class="badge badge-azul" style="font-size:10px;">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}</span>`;}).join('')}</div>`:`<div style="font-size:11px;color:var(--gris-medio);font-style:italic;">Sin asignar — se mostrarán todas las instituciones al armar una OC</div>`}
+</div>
 <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--gris-claro);font-size:11px;color:var(--gris-medio);">${ocCount} orden(es) registrada(s)</div>
 </div>`;
 }).join('');
 }
 function filtrarProveedores(){renderProveedores();}
+function poblarChecksInstProv(seleccionadas){
+const cont=document.getElementById('prov-inst-checks');
+if(!instituciones.length){cont.innerHTML='<div style="font-size:12px;color:var(--gris-medio);">No hay instituciones cargadas todavía.</div>';return;}
+cont.innerHTML=instituciones.map(i=>`
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+<input type="checkbox" class="prov-inst-check" value="${i.id}" ${seleccionadas.includes(i.id)?'checked':''} style="border-radius:4px;">
+${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)}
+</label>
+`).join('');
+}
 function abrirModalProv(){
 ['prov-id','prov-nombre','prov-ruc','prov-contacto','prov-tel','prov-dir'].forEach(id=>document.getElementById(id).value='');
 document.getElementById('modal-prov-title').textContent='Nuevo Proveedor';
+poblarChecksInstProv([]);
 openModal('modal-prov');
 }
 function editarProveedor(id){
@@ -2372,12 +2404,14 @@ document.getElementById('prov-contacto').value=p.contacto||'';
 document.getElementById('prov-tel').value=p.tel||'';
 document.getElementById('prov-dir').value=p.dir||'';
 document.getElementById('modal-prov-title').textContent='Editar Proveedor';
+poblarChecksInstProv(p.institucionesAsignadas||[]);
 openModal('modal-prov');
 }
 function guardarProveedor(){
 const nombre=document.getElementById('prov-nombre').value.trim();
 if(!nombre){alert('El nombre es requerido.');return;}
-const datos={nombre,ruc:document.getElementById('prov-ruc').value,categoria:document.getElementById('prov-cat').value,contacto:document.getElementById('prov-contacto').value,tel:document.getElementById('prov-tel').value,dir:document.getElementById('prov-dir').value};
+const institucionesAsignadas=Array.from(document.querySelectorAll('.prov-inst-check:checked')).map(c=>parseInt(c.value));
+const datos={nombre,ruc:document.getElementById('prov-ruc').value,categoria:document.getElementById('prov-cat').value,contacto:document.getElementById('prov-contacto').value,tel:document.getElementById('prov-tel').value,dir:document.getElementById('prov-dir').value,institucionesAsignadas};
 const id=document.getElementById('prov-id').value;
 if(id){Object.assign(proveedores.find(p=>p.id===parseInt(id)),datos);}
 else{proveedores.push({id:nextProvId++,...datos});}
