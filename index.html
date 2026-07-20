@@ -138,7 +138,7 @@ textarea{resize:vertical;min-height:65px;}
 .empty-state p{font-size:12px;}
 .num{font-family:'DM Mono',monospace;}
 /* MENU PLANNER */
-.semana-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:18px;}
+.semana-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;}
 .dia-card{background:#fff;border:1.5px solid var(--gris-claro);border-radius:10px;padding:10px;min-height:90px;}
 .dia-card.tiene-menu{border-color:var(--verde-claro);background:var(--verde-suave);}
 .dia-nombre{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gris-medio);margin-bottom:6px;}
@@ -1100,7 +1100,7 @@ const inst=getInst(instId);
 const lunes=getLunesSemana(0);
 const totales={};
 let diasConMenu=0;
-for(let d=0;d<7;d++){
+for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const receta=getReceta(menuSemanal[fechaStr(fecha)]);
 if(!receta)continue;
@@ -1532,12 +1532,13 @@ window.addEventListener('afterprint',()=>{document.body.classList.remove('printi
 // =============================================
 function renderMenuSemanal(){
 const lunes=getLunesSemana(currentSemanaOffset);
-const fin=new Date(lunes);fin.setDate(lunes.getDate()+6);
-document.getElementById('menu-semana-titulo').textContent=`Semana ${currentSemanaOffset===0?'actual':currentSemanaOffset>0?'siguiente':'anterior'}`;
+const fin=new Date(lunes);fin.setDate(lunes.getDate()+4);
+const semanaDelMes=Math.ceil(lunes.getDate()/7);
+document.getElementById('menu-semana-titulo').textContent=`Semana ${semanaDelMes}`;
 document.getElementById('menu-semana-rango').textContent=`${lunes.toLocaleDateString('es-PY',{day:'numeric',month:'long'})} al ${fin.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'})}`;
 // Detectar si hay menú en esta semana
 let hayMenuEnSemana=false;
-for(let d=0;d<7;d++){
+for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
 if(menuSemanal[key]){hayMenuEnSemana=true;break;}
@@ -1568,7 +1569,7 @@ emptyContainer.innerHTML='';
 grid.style.display='grid';
 }
 let html='';
-for(let d=0;d<7;d++){
+for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
 const recetaId=menuSemanal[key];
@@ -1824,9 +1825,9 @@ ${instEmoji[i.tipo]||'🏫'} ${i.nombre} <span class="badge badge-azul">${i.bene
 </label>
 `).join('');
 const checksDias=document.getElementById('calc-dias-checks');
-checksDias.innerHTML=diasNombre.map((d,idx)=>`
+checksDias.innerHTML=diasNombre.slice(0,5).map((d,idx)=>`
 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
-<input type="checkbox" value="${idx}" ${idx<5?'checked':''} style="border-radius:3px;">${d.substring(0,3)}
+<input type="checkbox" value="${idx}" checked style="border-radius:3px;">${d.substring(0,3)}
 </label>
 `).join('');
 calcularPedido();
