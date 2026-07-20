@@ -252,10 +252,11 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 <div class="nav-section">Planificación</div>
 <div class="nav-item" onclick="showView('menu',this)"><span class="nav-icon">🗓️</span>Menú Semanal</div>
 <div class="nav-item" onclick="showView('recetario',this)"><span class="nav-icon">📖</span>Recetario</div>
+<div class="nav-item" id="nav-costos" onclick="showView('costos',this)"><span class="nav-icon">💰</span>Costo por Menú</div>
 <div class="nav-item" onclick="showView('pedido-calc',this)"><span class="nav-icon">🧮</span>Calcular Pedido</div>
 <div class="nav-section">Gestión</div>
 <div class="nav-item" onclick="showView('instituciones',this)"><span class="nav-icon">🏫</span>Instituciones</div>
-<div class="nav-item" onclick="showView('inventario',this)"><span class="nav-icon">📦</span>Inventario Central</div>
+<div class="nav-item" onclick="showView('inventario',this)"><span class="nav-icon">📦</span>Inventario</div>
 <div class="nav-item" onclick="showView('proveedores',this)"><span class="nav-icon">🏭</span>Proveedores</div>
 <div class="nav-item" onclick="showView('catalogo',this)"><span class="nav-icon">🗂️</span>Catálogo</div>
 <div class="nav-item" onclick="showView('datos',this)"><span class="nav-icon">💾</span>Datos</div>
@@ -336,7 +337,35 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 </div>
 <div class="card"><div class="table-wrap"><table id="tbl-recetas"></table></div></div>
 </div>
-<!-- CALCULAR PEDIDO -->
+<!-- COSTO POR MENÚ -->
+<div class="view" id="view-costos">
+  <div class="alert alert-violeta">💰 Cargá los ingredientes de un menú (o traelos desde una receta con "Ver costo") y obtené el costo total y el costo por ración, usando los precios ya cargados en tu Catálogo.</div>
+  <div class="card">
+    <div style="padding:18px;">
+      <div class="form-row">
+        <div class="form-group" style="flex:2;"><label>Nombre del menú / receta</label><input type="text" id="costo-nombre" placeholder="Ej: Guiso de arroz con pollo"></div>
+        <div class="form-group"><label>Institución (opcional)</label><select id="costo-institucion" onchange="aplicarInstCosto()"><option value="">— Ninguna —</option></select></div>
+        <div class="form-group"><label>Raciones / beneficiarios</label><input type="number" id="costo-raciones" min="1" step="1" value="1" oninput="calcularCosto()"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table id="tbl-costo-ingredientes"></table></div>
+    <div style="padding:14px 18px;">
+      <button class="btn btn-secondary btn-sm" onclick="agregarFilaCosto()">+ Agregar ingrediente</button>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="stat-card">
+      <div class="stat-label">Costo total del menú</div>
+      <div class="stat-value" id="costo-total" style="color:var(--verde);">₲ 0</div>
+    </div>
+    <div class="stat-card" style="background:#fdece5;border-color:#f3c9b8;">
+      <div class="stat-label">Costo por ración / beneficiario</div>
+      <div class="stat-value" id="costo-por-racion" style="color:var(--accent,#e8623a);">₲ 0</div>
+    </div>
+  </div>
+</div>
 <div class="view" id="view-pedido-calc">
 <div class="alert alert-violeta">🧮 Seleccioná una semana del menú y el sistema calculará automáticamente los insumos necesarios según los beneficiarios de cada institución.</div>
 <div class="grid-2">
@@ -1109,6 +1138,7 @@ dashboard:{title:"Dashboard",sub:"Resumen general del sistema"},
 ordenes:{title:"Órdenes de Compra",sub:"Gestión de pedidos a proveedores"},
 menu:{title:"Menú Semanal",sub:"Planificación de menús por semana"},
 recetario:{title:"Recetario",sub:"Recetas con cantidades por beneficiario"},
+costos:{title:"Costo por Menú",sub:"Costo total y por ración según precios del catálogo"},
 "pedido-calc":{title:"Calcular Pedido",sub:"Estimación automática de insumos"},
 instituciones:{title:"Instituciones",sub:"Escuelas y centros atendidos"},
 inventario:{title:"Inventario",sub:"Stock por institución"},
@@ -1136,6 +1166,11 @@ renderMenuSemanal();
 } else if(id==='recetario'){
 actions.innerHTML=`<button class="btn btn-secondary" onclick="descargarPlantillaRecetas()">📄 Plantilla Excel</button><button class="btn btn-secondary" onclick="document.getElementById('file-import-recetas').click()">📥 Importar Excel</button><button class="btn btn-primary" onclick="abrirModalReceta()">+ Nueva receta</button>`;
 renderRecetario();
+} else if(id==='costos'){
+actions.innerHTML=`<button class="btn btn-secondary" onclick="resetCalculadoraCosto()">🔄 Nuevo cálculo</button>`;
+poblarSelectInstCosto();
+if(!ingredientesCosto.length)resetCalculadoraCosto();
+else renderTablaCosto();
 } else if(id==='pedido-calc'){
 initCalculadora();
 } else if(id==='instituciones'){
@@ -1576,7 +1611,7 @@ document.getElementById('tbl-recetas').innerHTML=`
 <td><span class="badge ${r.tipo==='Almuerzo'?'badge-verde':r.tipo==='Desayuno'?'badge-amarillo':'badge-azul'}">${r.tipo}</span></td>
 <td>${r.ingredientes.length} ingredientes</td>
 <td style="font-size:12px;color:var(--gris-medio);">${r.desc||'—'}</td>
-<td><button class="btn btn-secondary btn-sm" onclick="editarReceta(${r.id})">Editar</button></td>
+<td><button class="btn btn-secondary btn-sm" onclick="editarReceta(${r.id})">Editar</button> <button class="btn btn-secondary btn-sm" onclick="verCostoReceta(${r.id})">💰 Ver costo</button></td>
 </tr>`).join('')}</tbody>
 `;
 }
@@ -1632,6 +1667,118 @@ else{recetas.push({id:nextRecetaId++,...datos});}
 closeModal('modal-receta');
 guardarEstado();
 renderRecetario();
+}
+
+// =============================================
+// COSTO POR MENÚ (calculadora conectada al catálogo)
+// =============================================
+let ingredientesCosto=[];
+let contadorCosto=0;
+
+function poblarSelectInstCosto(){
+  const sel=document.getElementById('costo-institucion');
+  const actual=sel.value;
+  sel.innerHTML='<option value="">— Ninguna —</option>'+instituciones.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)} (${i.beneficiarios})</option>`).join('');
+  sel.value=actual;
+}
+
+function aplicarInstCosto(){
+  const instId=parseInt(document.getElementById('costo-institucion').value);
+  if(instId){document.getElementById('costo-raciones').value=getInst(instId).beneficiarios||1;}
+  calcularCosto();
+}
+
+function agregarFilaCosto(datos){
+  const id=contadorCosto++;
+  ingredientesCosto.push({
+    id,
+    productoId:datos?.productoId||'',
+    cantidad:datos?.cantidad??'',
+    precio:datos?.precio??''
+  });
+  renderTablaCosto();
+}
+
+function eliminarFilaCosto(id){
+  ingredientesCosto=ingredientesCosto.filter(i=>i.id!==id);
+  renderTablaCosto();
+}
+
+function actualizarCampoCosto(id,campo,valor){
+  const item=ingredientesCosto.find(i=>i.id===id);
+  if(!item)return;
+  item[campo]=valor;
+  if(campo==='productoId'){
+    const p=getProd(parseInt(valor));
+    item.precio=precioMin(p)||'';
+  }
+  renderTablaCosto();
+}
+
+function calcularCosto(){
+  let total=0;
+  ingredientesCosto.forEach(i=>{
+    const cant=parseFloat(i.cantidad)||0;
+    const precio=parseFloat(i.precio)||0;
+    const subtotal=cant*precio;
+    const cell=document.getElementById('costo-subtotal-'+i.id);
+    if(cell)cell.textContent=fmt(subtotal);
+    total+=subtotal;
+  });
+  const raciones=parseFloat(document.getElementById('costo-raciones')?.value)||1;
+  document.getElementById('costo-total').textContent=fmt(total);
+  document.getElementById('costo-por-racion').textContent=fmt(total/raciones);
+}
+
+function renderTablaCosto(){
+  const el=document.getElementById('tbl-costo-ingredientes');
+  const listaProd=[...productos].sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.nombre.localeCompare(b.nombre));
+  el.innerHTML=`
+    <thead><tr><th>Producto</th><th style="width:110px;">Cantidad</th><th style="width:80px;">Unidad</th><th style="width:140px;">Precio unit. (₲)</th><th style="text-align:right;width:120px;">Subtotal</th><th style="width:40px;"></th></tr></thead>
+    <tbody>${ingredientesCosto.map(item=>{
+      const p=item.productoId?getProd(parseInt(item.productoId)):null;
+      return `<tr>
+        <td>
+          <select onchange="actualizarCampoCosto(${item.id},'productoId',this.value)">
+            <option value="">Seleccionar...</option>
+            ${listaProd.map(prod=>`<option value="${prod.id}" ${parseInt(item.productoId)===prod.id?'selected':''}>${esc(prod.nombre)}</option>`).join('')}
+          </select>
+        </td>
+        <td><input type="number" min="0" step="0.01" value="${item.cantidad}" placeholder="0" oninput="actualizarCampoCosto(${item.id},'cantidad',this.value);calcularCosto();"></td>
+        <td style="font-size:12px;color:var(--gris-medio);">${p?esc(p.unidad):'—'}</td>
+        <td><input type="number" min="0" step="1" value="${item.precio}" placeholder="0" oninput="actualizarCampoCosto(${item.id},'precio',this.value);calcularCosto();"></td>
+        <td style="text-align:right;font-weight:700;" id="costo-subtotal-${item.id}">${fmt(0)}</td>
+        <td><button class="btn-icon btn-icon-del" title="Eliminar" onclick="eliminarFilaCosto(${item.id})">🗑️</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  `;
+  calcularCosto();
+}
+
+function resetCalculadoraCosto(){
+  document.getElementById('costo-nombre').value='';
+  document.getElementById('costo-institucion').value='';
+  document.getElementById('costo-raciones').value=1;
+  ingredientesCosto=[];
+  agregarFilaCosto();
+  agregarFilaCosto();
+  agregarFilaCosto();
+}
+
+function verCostoReceta(recetaId){
+  const receta=getReceta(recetaId);
+  if(!receta)return;
+  ingredientesCosto=receta.ingredientes.map(ing=>({
+    id:contadorCosto++,
+    productoId:ing.productoId,
+    cantidad:ing.cantidad,
+    precio:precioMin(getProd(ing.productoId))||''
+  }));
+  showView('costos',document.getElementById('nav-costos'));
+  document.getElementById('costo-nombre').value=receta.nombre;
+  document.getElementById('costo-institucion').value='';
+  document.getElementById('costo-raciones').value=1;
+  renderTablaCosto();
 }
 // =============================================
 // CALCULADORA DE PEDIDO
