@@ -682,9 +682,21 @@ with check (true);</textarea>
 </div>
 <input type="hidden" id="dia-menu-key">
 <div class="form-group" style="margin-bottom:14px;">
-<label>Receta del día</label>
-<select id="dia-receta-sel">
-<option value="">— Sin menú este día —</option>
+<label>🍽️ Plato principal</label>
+<select id="dia-receta-principal">
+<option value="">— Sin asignar —</option>
+</select>
+</div>
+<div class="form-group" style="margin-bottom:14px;">
+<label>🥗 Ensalada</label>
+<select id="dia-receta-ensalada">
+<option value="">— Sin asignar —</option>
+</select>
+</div>
+<div class="form-group" style="margin-bottom:14px;">
+<label>🍮 Postre</label>
+<select id="dia-receta-postre">
+<option value="">— Sin asignar —</option>
 </select>
 </div>
 <div class="form-actions">
@@ -1035,6 +1047,17 @@ function getProv(id){return proveedores.find(p=>p.id===id)||{nombre:"—"};}
 function getProd(id){return productos.find(p=>p.id===id)||{nombre:"—",unidad:""};}
 function getInst(id){return instituciones.find(i=>i.id===id)||{nombre:"—"};}
 function getReceta(id){return recetas.find(r=>r.id===id)||null;}
+// Normaliza una entrada de menuSemanal[key], que puede ser el formato viejo
+// (un solo recetaId numérico) o el nuevo ({principal,ensalada,postre}).
+function normalizarDiaMenu(val){
+  if(val===undefined||val===null)return null;
+  if(typeof val==='number')return {principal:val,ensalada:null,postre:null};
+  return {principal:val.principal||null,ensalada:val.ensalada||null,postre:val.postre||null};
+}
+function diaTieneMenu(key){
+  const d=normalizarDiaMenu(menuSemanal[key]);
+  return !!(d&&(d.principal||d.ensalada||d.postre));
+}
 function getLunesSemana(offset){
 const hoy=new Date();
 const dia=hoy.getDay();
@@ -1074,9 +1097,11 @@ let dias=0;
 while(fechaStr(cursor)<hoy && dias<90){
 cursor.setDate(cursor.getDate()+1);
 const key=fechaStr(cursor);
-const recetaId=menuSemanal[key];
-const receta=recetaId?getReceta(recetaId):null;
-if(receta){
+const dia=normalizarDiaMenu(menuSemanal[key]);
+if(dia){
+['principal','ensalada','postre'].forEach(slot=>{
+const receta=dia[slot]?getReceta(dia[slot]):null;
+if(!receta)return;
 instituciones.forEach(inst=>{
 const items=invInstituciones[inst.id]||(invInstituciones[inst.id]=[]);
 receta.ingredientes.forEach(ing=>{
@@ -1087,6 +1112,7 @@ if(!item)return;
 item.movimientos.push({tipo:'salida',cantidad:cantidadTotal,fecha:key,obs:`Consumo automático - ${receta.nombre}`});
 item.stockActual=Math.max(0,item.stockActual-cantidadTotal);
 huboConsumo=true;
+});
 });
 });
 }
@@ -1102,11 +1128,15 @@ const totales={};
 let diasConMenu=0;
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-const receta=getReceta(menuSemanal[fechaStr(fecha)]);
-if(!receta)continue;
+const dia=normalizarDiaMenu(menuSemanal[fechaStr(fecha)]);
+if(!dia||(!dia.principal&&!dia.ensalada&&!dia.postre))continue;
 diasConMenu++;
+['principal','ensalada','postre'].forEach(slot=>{
+const receta=dia[slot]?getReceta(dia[slot]):null;
+if(!receta)return;
 receta.ingredientes.forEach(ing=>{
 totales[ing.productoId]=(totales[ing.productoId]||0)+ing.cantidad*(inst.beneficiarios||0);
+});
 });
 }
 const promedios={};
@@ -1541,7 +1571,7 @@ let hayMenuEnSemana=false;
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
-if(menuSemanal[key]){hayMenuEnSemana=true;break;}
+if(diaTieneMenu(key)){hayMenuEnSemana=true;break;}
 }
 const emptyContainer=document.getElementById('menu-empty-container');
 const grid=document.getElementById('semana-grid');
@@ -1572,13 +1602,20 @@ let html='';
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
-const recetaId=menuSemanal[key];
-const receta=recetaId?getReceta(recetaId):null;
-const tieneMenu=!!receta;
+const dia=normalizarDiaMenu(menuSemanal[key]);
+const recPrincipal=dia?.principal?getReceta(dia.principal):null;
+const recEnsalada=dia?.ensalada?getReceta(dia.ensalada):null;
+const recPostre=dia?.postre?getReceta(dia.postre):null;
+const tieneMenu=!!(recPrincipal||recEnsalada||recPostre);
 html+=`<div class="dia-card ${tieneMenu?'tiene-menu':''}" onclick="abrirModalDiaMenu('${key}','${diasNombre[d]}')">
 <div class="dia-nombre">${diasNombre[d]}</div>
 <div style="font-size:10px;color:var(--gris-medio);margin-bottom:5px;">${fecha.toLocaleDateString('es-PY',{day:'numeric',month:'short'})}</div>
-${receta?`<div class="dia-receta">${receta.nombre}</div><div style="font-size:10px;color:var(--verde);">${receta.tipo}</div>`:`<div class="dia-empty">Sin menú asignado</div>`}
+${tieneMenu?`
+<div style="text-align:left;font-size:10.5px;line-height:1.5;">
+<div><span class="badge badge-verde" style="font-size:9px;padding:1px 5px;">Principal</span><br>${recPrincipal?esc(recPrincipal.nombre):'<span style="color:var(--gris-medio);">—</span>'}</div>
+<div style="margin-top:4px;"><span class="badge badge-azul" style="font-size:9px;padding:1px 5px;">Ensalada</span><br>${recEnsalada?esc(recEnsalada.nombre):'<span style="color:var(--gris-medio);">—</span>'}</div>
+<div style="margin-top:4px;"><span class="badge badge-violeta" style="font-size:9px;padding:1px 5px;">Postre</span><br>${recPostre?esc(recPostre.nombre):'<span style="color:var(--gris-medio);">—</span>'}</div>
+</div>`:`<div class="dia-empty">Sin menú asignado</div>`}
 <div style="font-size:10px;color:var(--gris-medio);margin-top:6px;text-align:right;">✏️ editar</div>
 </div>`;
 }
@@ -1589,14 +1626,19 @@ function abrirModalDiaMenu(key,diaNombre){
 document.getElementById('modal-dia-titulo').textContent=`Menú del ${diaNombre}`;
 document.getElementById('modal-dia-fecha').textContent=key;
 document.getElementById('dia-menu-key').value=key;
-const sel=document.getElementById('dia-receta-sel');
-sel.innerHTML=`<option value="">— Sin menú este día —</option>`+recetas.map(r=>`<option value="${r.id}" ${menuSemanal[key]==r.id?'selected':''}>${r.nombre} (${r.tipo})</option>`).join('');
+const dia=normalizarDiaMenu(menuSemanal[key])||{principal:null,ensalada:null,postre:null};
+const opciones=(seleccionado)=>`<option value="">— Sin asignar —</option>`+recetas.map(r=>`<option value="${r.id}" ${seleccionado==r.id?'selected':''}>${esc(r.nombre)} (${r.tipo})</option>`).join('');
+document.getElementById('dia-receta-principal').innerHTML=opciones(dia.principal);
+document.getElementById('dia-receta-ensalada').innerHTML=opciones(dia.ensalada);
+document.getElementById('dia-receta-postre').innerHTML=opciones(dia.postre);
 openModal('modal-dia-menu');
 }
 function guardarDiaMenu(){
 const key=document.getElementById('dia-menu-key').value;
-const recetaId=document.getElementById('dia-receta-sel').value;
-if(recetaId)menuSemanal[key]=parseInt(recetaId);
+const principal=parseInt(document.getElementById('dia-receta-principal').value)||null;
+const ensalada=parseInt(document.getElementById('dia-receta-ensalada').value)||null;
+const postre=parseInt(document.getElementById('dia-receta-postre').value)||null;
+if(principal||ensalada||postre)menuSemanal[key]={principal,ensalada,postre};
 else delete menuSemanal[key];
 closeModal('modal-dia-menu');
 guardarEstado();
@@ -1847,16 +1889,20 @@ const recetasUsadas={};
 diasSel.forEach(d=>{
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
-const recetaId=menuSemanal[key];
-if(recetaId){
+const dia=normalizarDiaMenu(menuSemanal[key]);
+if(dia){
+['principal','ensalada','postre'].forEach(slot=>{
+const recetaId=dia[slot];
+if(!recetaId)return;
 if(!recetasUsadas[recetaId])recetasUsadas[recetaId]={receta:getReceta(recetaId),dias:[],count:0};
 recetasUsadas[recetaId].dias.push(diasNombre[d]);
 recetasUsadas[recetaId].count++;
+});
 }
 });
 const diasSinMenu=diasSel.filter(d=>{
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-return !menuSemanal[fechaStr(fecha)];
+return !diaTieneMenu(fechaStr(fecha));
 });
 const totalesProd={};
 Object.values(recetasUsadas).forEach(({receta,count})=>{
