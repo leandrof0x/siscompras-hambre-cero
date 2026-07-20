@@ -343,6 +343,9 @@ details.cloud-details .details-body{padding:0 16px 16px;}
   <div class="card">
     <div style="padding:18px;">
       <div class="form-row">
+        <div class="form-group" style="flex:2;"><label>Cargar desde una receta existente (opcional)</label><select id="costo-receta-sel" onchange="cargarRecetaEnCosto(this.value)"><option value="">— Elegir receta —</option></select></div>
+      </div>
+      <div class="form-row">
         <div class="form-group" style="flex:2;"><label>Nombre del menú / receta</label><input type="text" id="costo-nombre" placeholder="Ej: Guiso de arroz con pollo"></div>
         <div class="form-group"><label>Institución (opcional)</label><select id="costo-institucion" onchange="aplicarInstCosto()"><option value="">— Ninguna —</option></select></div>
         <div class="form-group"><label>Raciones / beneficiarios</label><input type="number" id="costo-raciones" min="1" step="1" value="1" oninput="calcularCosto()"></div>
@@ -1680,6 +1683,29 @@ function poblarSelectInstCosto(){
   const actual=sel.value;
   sel.innerHTML='<option value="">— Ninguna —</option>'+instituciones.map(i=>`<option value="${i.id}">${instEmoji[i.tipo]||'🏫'} ${esc(i.nombre)} (${i.beneficiarios})</option>`).join('');
   sel.value=actual;
+  poblarSelectRecetaCosto();
+}
+
+function poblarSelectRecetaCosto(){
+  const sel=document.getElementById('costo-receta-sel');
+  const actual=sel.value;
+  const lista=[...recetas].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">— Elegir receta —</option>'+lista.map(r=>`<option value="${r.id}">${esc(r.nombre)} (${r.tipo})</option>`).join('');
+  sel.value=actual;
+}
+
+function cargarRecetaEnCosto(recetaId){
+  if(!recetaId)return;
+  const receta=getReceta(parseInt(recetaId));
+  if(!receta)return;
+  ingredientesCosto=receta.ingredientes.map(ing=>({
+    id:contadorCosto++,
+    productoId:ing.productoId,
+    cantidad:ing.cantidad,
+    precio:precioMin(getProd(ing.productoId))||''
+  }));
+  document.getElementById('costo-nombre').value=receta.nombre;
+  renderTablaCosto();
 }
 
 function aplicarInstCosto(){
@@ -1758,6 +1784,8 @@ function renderTablaCosto(){
 function resetCalculadoraCosto(){
   document.getElementById('costo-nombre').value='';
   document.getElementById('costo-institucion').value='';
+  const selReceta=document.getElementById('costo-receta-sel');
+  if(selReceta)selReceta.value='';
   document.getElementById('costo-raciones').value=1;
   ingredientesCosto=[];
   agregarFilaCosto();
@@ -1778,6 +1806,8 @@ function verCostoReceta(recetaId){
   document.getElementById('costo-nombre').value=receta.nombre;
   document.getElementById('costo-institucion').value='';
   document.getElementById('costo-raciones').value=1;
+  const selReceta=document.getElementById('costo-receta-sel');
+  if(selReceta)selReceta.value=receta.id;
   renderTablaCosto();
 }
 // =============================================
