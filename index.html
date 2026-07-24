@@ -1062,6 +1062,49 @@ function diaTieneMenu(key){
   const d=normalizarDiaMenu(menuSemanal[key]);
   return !!(d&&(d.principal||d.ensalada||d.postre));
 }
+
+// =============================================
+// PATRÓN DE MENÚ RECURRENTE (Semana 1 a 4, se repite cada mes)
+// =============================================
+// menuPatron = { 1: {0:{principal,ensalada,postre}, 1:{...}, ... 4:diaIdx}, 2:{...}, 3:{...}, 4:{...} }
+// donde la clave externa es la "semana del mes" (1-4) y diaIdx es 0=Lunes..4=Viernes
+let menuPatron={};
+
+function semanaDelMesDe(fecha){
+  return Math.min(4,Math.ceil(fecha.getDate()/7));
+}
+function diaIdxDe(fecha){
+  const dow=fecha.getDay(); // 0=Domingo...6=Sábado
+  if(dow===0||dow===6)return null;
+  return dow-1; // 0=Lunes..4=Viernes
+}
+// Arma el patrón recurrente a partir de lo que ya estaba cargado en menuSemanal
+// (formato viejo, por fecha exacta). Solo corre si el patrón todavía está vacío,
+// y usa la carga más reciente encontrada para cada combinación semana/día.
+function migrarMenuAPatron(){
+  if(Object.keys(menuPatron).length)return;
+  Object.keys(menuSemanal).sort().forEach(key=>{
+    const fecha=new Date(key+'T12:00:00');
+    const diaIdx=diaIdxDe(fecha);
+    if(diaIdx===null)return;
+    const dia=normalizarDiaMenu(menuSemanal[key]);
+    if(!dia||(!dia.principal&&!dia.ensalada&&!dia.postre))return;
+    const semana=semanaDelMesDe(fecha);
+    if(!menuPatron[semana])menuPatron[semana]={};
+    menuPatron[semana][diaIdx]=dia;
+  });
+}
+// Menú vigente para una fecha cualquiera, según el patrón recurrente
+function getDiaPatron(fecha){
+  const diaIdx=diaIdxDe(fecha);
+  if(diaIdx===null)return null;
+  const semana=semanaDelMesDe(fecha);
+  return (menuPatron[semana]&&menuPatron[semana][diaIdx])||null;
+}
+function diaPatronTieneMenu(fecha){
+  const d=getDiaPatron(fecha);
+  return !!(d&&(d.principal||d.ensalada||d.postre));
+}
 function getLunesSemana(offset){
 const hoy=new Date();
 const dia=hoy.getDay();
@@ -1092,6 +1135,7 @@ setTimeout(()=>toast.remove(),250);
 // CONSUMO AUTOMÁTICO DE STOCK (por institución, según menú semanal)
 // =============================================
 function aplicarConsumoAutomatico(){
+migrarMenuAPatron();
 const hoy=fechaStr(new Date());
 if(!ultimoConsumoFecha){ultimoConsumoFecha=hoy;guardarEstado({sync:false});return;}
 if(ultimoConsumoFecha>=hoy)return;
@@ -1101,7 +1145,7 @@ let dias=0;
 while(fechaStr(cursor)<hoy && dias<90){
 cursor.setDate(cursor.getDate()+1);
 const key=fechaStr(cursor);
-const dia=normalizarDiaMenu(menuSemanal[key]);
+const dia=getDiaPatron(cursor);
 if(dia){
 ['principal','ensalada','postre'].forEach(slot=>{
 const receta=dia[slot]?getReceta(dia[slot]):null;
@@ -1126,13 +1170,14 @@ ultimoConsumoFecha=hoy;
 guardarEstado({sync:huboConsumo});
 }
 function calcularConsumoDiarioPromedio(instId){
+migrarMenuAPatron();
 const inst=getInst(instId);
 const lunes=getLunesSemana(0);
 const totales={};
 let diasConMenu=0;
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-const dia=normalizarDiaMenu(menuSemanal[fechaStr(fecha)]);
+const dia=getDiaPatron(fecha);
 if(!dia||(!dia.principal&&!dia.ensalada&&!dia.postre))continue;
 diasConMenu++;
 ['principal','ensalada','postre'].forEach(slot=>{
@@ -1578,17 +1623,17 @@ window.addEventListener('afterprint',()=>{document.body.classList.remove('printi
 // MENÚ SEMANAL (MODIFICADO: estado vacío si no hay menú en la semana)
 // =============================================
 function renderMenuSemanal(){
+migrarMenuAPatron();
 const lunes=getLunesSemana(currentSemanaOffset);
 const fin=new Date(lunes);fin.setDate(lunes.getDate()+4);
-const semanaDelMes=Math.ceil(lunes.getDate()/7);
+const semanaDelMes=semanaDelMesDe(lunes);
 document.getElementById('menu-semana-titulo').textContent=`Semana ${semanaDelMes}`;
-document.getElementById('menu-semana-rango').textContent=`${lunes.toLocaleDateString('es-PY',{day:'numeric',month:'long'})} al ${fin.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'})}`;
-// Detectar si hay menú en esta semana
+document.getElementById('menu-semana-rango').textContent=`${lunes.toLocaleDateString('es-PY',{day:'numeric',month:'long'})} al ${fin.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'})} · se repite cada mes`;
+// Detectar si hay menú en el patrón de esta semana
 let hayMenuEnSemana=false;
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-const key=fechaStr(fecha);
-if(diaTieneMenu(key)){hayMenuEnSemana=true;break;}
+if(diaPatronTieneMenu(fecha)){hayMenuEnSemana=true;break;}
 }
 const emptyContainer=document.getElementById('menu-empty-container');
 const grid=document.getElementById('semana-grid');
@@ -1603,12 +1648,12 @@ emptyContainer.innerHTML=`
 </div>`;
 grid.style.display='none';
 } else if(!hayMenuEnSemana){
-// Hay recetas pero no se ha asignado menú en esta semana
+// Hay recetas pero no se ha asignado menú a esta semana del patrón
 emptyContainer.innerHTML=`
 <div class="menu-empty-state">
 <div class="big">🗓️</div>
-<h3>Semana sin menú planificado</h3>
-<p>Todavía no asignaste recetas a los días de esta semana. Hacé clic en cualquier día para asignar una receta, o usá las flechas para ver otras semanas.</p>
+<h3>Semana ${semanaDelMes} sin menú planificado</h3>
+<p>Todavía no asignaste recetas a los días de la Semana ${semanaDelMes}. Hacé clic en cualquier día para asignar una receta — el menú se repetirá automáticamente cada vez que llegue esta semana del mes.</p>
 </div>`;
 grid.style.display='grid';
 } else {
@@ -1619,7 +1664,7 @@ let html='';
 for(let d=0;d<5;d++){
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
 const key=fechaStr(fecha);
-const dia=normalizarDiaMenu(menuSemanal[key]);
+const dia=getDiaPatron(fecha);
 const recPrincipal=dia?.principal?getReceta(dia.principal):null;
 const recEnsalada=dia?.ensalada?getReceta(dia.ensalada):null;
 const recPostre=dia?.postre?getReceta(dia.postre):null;
@@ -1640,10 +1685,13 @@ document.getElementById('semana-grid').innerHTML=html;
 }
 function cambiarSemana(dir){currentSemanaOffset+=dir;renderMenuSemanal();}
 function abrirModalDiaMenu(key,diaNombre){
-document.getElementById('modal-dia-titulo').textContent=`Menú del ${diaNombre}`;
-document.getElementById('modal-dia-fecha').textContent=key;
-document.getElementById('dia-menu-key').value=key;
-const dia=normalizarDiaMenu(menuSemanal[key])||{principal:null,ensalada:null,postre:null};
+const fecha=new Date(key+'T12:00:00');
+const semana=semanaDelMesDe(fecha);
+const diaIdx=diaIdxDe(fecha);
+document.getElementById('modal-dia-titulo').textContent=`Menú del ${diaNombre} - Semana ${semana}`;
+document.getElementById('modal-dia-fecha').textContent=`Se repite todos los meses en la Semana ${semana} (ej. esta vez: ${key})`;
+document.getElementById('dia-menu-key').value=`${semana}|${diaIdx}`;
+const dia=(menuPatron[semana]&&menuPatron[semana][diaIdx])||{principal:null,ensalada:null,postre:null};
 const opciones=(seleccionado)=>`<option value="">— Sin asignar —</option>`+recetas.map(r=>`<option value="${r.id}" ${seleccionado==r.id?'selected':''}>${esc(r.nombre)} (${r.tipo})</option>`).join('');
 document.getElementById('dia-receta-principal').innerHTML=opciones(dia.principal);
 document.getElementById('dia-receta-ensalada').innerHTML=opciones(dia.ensalada);
@@ -1651,12 +1699,14 @@ document.getElementById('dia-receta-postre').innerHTML=opciones(dia.postre);
 openModal('modal-dia-menu');
 }
 function guardarDiaMenu(){
-const key=document.getElementById('dia-menu-key').value;
+const [semanaStr,diaIdxStr]=document.getElementById('dia-menu-key').value.split('|');
+const semana=parseInt(semanaStr), diaIdx=parseInt(diaIdxStr);
 const principal=parseInt(document.getElementById('dia-receta-principal').value)||null;
 const ensalada=parseInt(document.getElementById('dia-receta-ensalada').value)||null;
 const postre=parseInt(document.getElementById('dia-receta-postre').value)||null;
-if(principal||ensalada||postre)menuSemanal[key]={principal,ensalada,postre};
-else delete menuSemanal[key];
+if(!menuPatron[semana])menuPatron[semana]={};
+if(principal||ensalada||postre)menuPatron[semana][diaIdx]={principal,ensalada,postre};
+else delete menuPatron[semana][diaIdx];
 closeModal('modal-dia-menu');
 guardarEstado();
 renderMenuSemanal();
@@ -1892,6 +1942,7 @@ checksDias.innerHTML=diasNombre.slice(0,5).map((d,idx)=>`
 calcularPedido();
 }
 function calcularPedido(){
+migrarMenuAPatron();
 const semanaBase=document.getElementById('calc-semana')?.value;
 if(!semanaBase)return;
 const lunes=new Date(semanaBase+'T12:00:00');
@@ -1905,8 +1956,7 @@ const totalBenef=instSelIds.reduce((s,id)=>{const i=getInst(id);return s+(i.bene
 const recetasUsadas={};
 diasSel.forEach(d=>{
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-const key=fechaStr(fecha);
-const dia=normalizarDiaMenu(menuSemanal[key]);
+const dia=getDiaPatron(fecha);
 if(dia){
 ['principal','ensalada','postre'].forEach(slot=>{
 const recetaId=dia[slot];
@@ -1919,7 +1969,7 @@ recetasUsadas[recetaId].count++;
 });
 const diasSinMenu=diasSel.filter(d=>{
 const fecha=new Date(lunes);fecha.setDate(lunes.getDate()+d);
-return !diaTieneMenu(fechaStr(fecha));
+return !diaPatronTieneMenu(fecha);
 });
 const totalesProd={};
 Object.values(recetasUsadas).forEach(({receta,count})=>{
@@ -2538,7 +2588,7 @@ let autoSyncTimer=null;
 let autoSyncEnCurso=false;
 let ultimoSnapshotGuardado='';
 function obtenerEstado(){
-return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId,ultimoConsumoFecha,datosEmpresa};
+return {proveedores,productos,instituciones,invInstituciones,recetas,menuSemanal,menuPatron,ordenes,nextOCId,nextProvId,nextProdId,nextInstId,nextRecetaId,ultimoConsumoFecha,datosEmpresa};
 }
 function aplicarEstado(d){
 if(d.proveedores)proveedores=d.proveedores;
@@ -2602,6 +2652,7 @@ const colores={info:'var(--gris-medio)',ok:'var(--verde)',error:'var(--rojo)',wa
 el.style.color=colores[tipo]||colores.info;
 el.textContent=msg;
   if(d.datosEmpresa)datosEmpresa=d.datosEmpresa;
+  if(d.menuPatron)menuPatron=d.menuPatron;
 }
 function cargarConfigAuth(){/* no-op: config Supabase desde sección Datos */}
 function guardarConfigAuth(){return true;}
