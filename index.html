@@ -254,6 +254,7 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 <div class="nav-item" onclick="showView('recetario',this)"><span class="nav-icon">📖</span>Recetario</div>
 <div class="nav-item" id="nav-costos" onclick="showView('costos',this)"><span class="nav-icon">💰</span>Costo por Menú</div>
 <div class="nav-item" onclick="showView('pedido-calc',this)"><span class="nav-icon">🧮</span>Calcular Pedido</div>
+<div class="nav-item" id="nav-proyeccion" onclick="showView('proyeccion',this)"><span class="nav-icon">📈</span>Proyección de Compras</div>
 <div class="nav-section">Gestión</div>
 <div class="nav-item" onclick="showView('instituciones',this)"><span class="nav-icon">🏫</span>Instituciones</div>
 <div class="nav-item" onclick="showView('inventario',this)"><span class="nav-icon">📦</span>Inventario</div>
@@ -394,7 +395,25 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 </div>
 <div id="calc-detalle"></div>
 </div>
-<!-- INSTITUCIONES -->
+<!-- PROYECCIÓN DE COMPRAS POR PROVEEDOR -->
+<div class="view" id="view-proyeccion">
+<div class="alert alert-violeta">📈 Calcula, por cada proveedor, la necesidad neta semanal (menú de esa semana del patrón menos el stock actual) de los productos que ese proveedor le vende, solo para las instituciones que tiene asignadas. Lista para imprimir y enviar.</div>
+<div class="card">
+<div style="padding:18px;">
+<div class="form-row">
+<div class="form-group"><label>Semana del patrón</label>
+<select id="proy-semana" onchange="this.dataset.tocado='1';calcularProyeccionCompras()">
+<option value="1">Semana 1</option>
+<option value="2">Semana 2</option>
+<option value="3">Semana 3</option>
+<option value="4">Semana 4</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+<div id="proyeccion-resultado"></div>
+</div>
 <div class="view" id="view-instituciones">
 <div class="search-bar">
 <div class="search-input"><input type="text" id="buscar-inst" placeholder="Buscar institución..." oninput="filtrarInstituciones()"></div>
@@ -1222,6 +1241,7 @@ menu:{title:"Menú Semanal",sub:"Planificación de menús por semana"},
 recetario:{title:"Recetario",sub:"Recetas con cantidades por beneficiario"},
 costos:{title:"Costo por Menú",sub:"Costo total y por ración según precios del catálogo"},
 "pedido-calc":{title:"Calcular Pedido",sub:"Estimación automática de insumos"},
+"proyeccion":{title:"Proyección de Compras",sub:"Necesidad neta semanal por proveedor, lista para enviar"},
 instituciones:{title:"Instituciones",sub:"Escuelas y centros atendidos"},
 inventario:{title:"Inventario",sub:"Stock por institución"},
 proveedores:{title:"Proveedores",sub:"Registro de proveedores"},
@@ -1255,6 +1275,11 @@ if(!ingredientesCosto.length)resetCalculadoraCosto();
 else renderTablaCosto();
 } else if(id==='pedido-calc'){
 initCalculadora();
+} else if(id==='proyeccion'){
+const semanaHoy=semanaDelMesDe(new Date());
+const selProy=document.getElementById('proy-semana');
+if(selProy&&!selProy.dataset.tocado)selProy.value=semanaHoy;
+calcularProyeccionCompras();
 } else if(id==='instituciones'){
 actions.innerHTML=`<button class="btn btn-secondary" onclick="descargarPlantillaInstituciones()">📄 Plantilla Excel</button><button class="btn btn-secondary" onclick="document.getElementById('file-import-inst').click()">📥 Importar Excel</button><button class="btn btn-primary" onclick="abrirModalInst()">+ Nueva institución</button>`;
 renderInstituciones();
@@ -2061,7 +2086,177 @@ items.forEach(i=>agregarItemOC(i.productoId,i.cantidad,i.precio,i.proveedorId));
 calcularTotalOC();
 openModal('modal-oc');
 }
+
 // =============================================
+// PROYECCIÓN DE COMPRAS POR PROVEEDOR (necesidad neta semanal)
+// =============================================
+window._proyeccionData={};
+function calcularProyeccionCompras(){
+migrarMenuAPatron();
+const semana=parseInt(document.getElementById('proy-semana')?.value)||1;
+const el=document.getElementById('proyeccion-resultado');
+const proveedoresConAsignacion=proveedores.filter(p=>(p.institucionesAsignadas||[]).length>0);
+window._proyeccionData={};
+if(!proveedoresConAsignacion.length){
+el.innerHTML=`<div class="alert alert-warn">Ningún proveedor tiene instituciones asignadas todavía. Andá a <strong>Proveedores</strong> y asignales instituciones a cada uno para poder generar la proyección.</div>`;
+return;
+}
+el.innerHTML=proveedoresConAsignacion.map(prov=>{
+const instAsig=(prov.institucionesAsignadas||[]).map(id=>getInst(id));
+const necesarioPorProd={};
+const stockPorProd={};
+instAsig.forEach(inst=>{
+(invInstituciones[inst.id]||[]).forEach(item=>{
+stockPorProd[item.productoId]=(stockPorProd[item.productoId]||0)+item.stockActual;
+});
+for(let d=0;d<5;d++){
+const dia=(menuPatron[semana]&&menuPatron[semana][d])||null;
+if(!dia)continue;
+['principal','ensalada','postre'].forEach(slot=>{
+const receta=dia[slot]?getReceta(dia[slot]):null;
+if(!receta)return;
+receta.ingredientes.forEach(ing=>{
+necesarioPorProd[ing.productoId]=(necesarioPorProd[ing.productoId]||0)+ing.cantidad*(inst.beneficiarios||0);
+});
+});
+}
+});
+const items=Object.keys(necesarioPorProd).map(pid=>parseInt(pid))
+.filter(pid=>{const p=getProd(pid);return (p.proveedores||[]).some(x=>x.proveedorId===prov.id);})
+.map(pid=>{
+const p=getProd(pid);
+const necesario=necesarioPorProd[pid];
+const stockDisp=stockPorProd[pid]||0;
+const aPedir=Math.max(0,necesario-stockDisp);
+const precioEntry=(p.proveedores||[]).find(x=>x.proveedorId===prov.id);
+const precio=precioEntry?precioEntry.precio:0;
+return {producto:p,necesario,stockDisp,aPedir,precio,subtotal:aPedir*precio};
+}).sort((a,b)=>b.subtotal-a.subtotal);
+window._proyeccionData[prov.id]={prov,instAsig,semana,items};
+const itemsConPedido=items.filter(i=>i.aPedir>0);
+const total=itemsConPedido.reduce((s,i)=>s+i.subtotal,0);
+return `
+<div class="card" style="margin-bottom:18px;">
+<div class="card-header">
+<div>
+<div class="card-title">${esc(prov.nombre)}</div>
+<div class="card-sub">Instituciones asignadas: ${instAsig.map(i=>esc(i.nombre)).join(', ')||'—'}</div>
+</div>
+<div style="display:flex;gap:8px;">
+<button class="btn btn-secondary btn-sm" onclick="imprimirProyeccion(${prov.id})">🖨️ Imprimir</button>
+<button class="btn btn-primary btn-sm" onclick="generarOCDesdeProyeccion(${prov.id})" ${itemsConPedido.length?'':'disabled'}>📝 Generar OC</button>
+</div>
+</div>
+<div style="padding:0 18px 16px;">
+${!items.length?`<div style="font-size:12px;color:var(--gris-medio);padding:12px 0;">Este proveedor no vende ningún producto usado en el menú de la Semana ${semana}.</div>`:
+!itemsConPedido.length?`<div style="font-size:12px;color:var(--verde);padding:12px 0;">✅ Stock suficiente en todas sus instituciones asignadas para esta semana.</div>`:
+`<div class="table-wrap"><table>
+<thead><tr><th>Producto</th><th style="text-align:right;">Necesario</th><th style="text-align:right;">Stock actual</th><th style="text-align:right;">A pedir</th><th style="text-align:right;">Precio unit.</th><th style="text-align:right;">Subtotal</th></tr></thead>
+<tbody>${itemsConPedido.map(i=>`<tr>
+<td style="font-weight:600;">${esc(i.producto.nombre)}</td>
+<td style="text-align:right;" class="num">${fmtNum(i.necesario,2)} ${esc(i.producto.unidad)}</td>
+<td style="text-align:right;" class="num">${fmtNum(i.stockDisp,2)} ${esc(i.producto.unidad)}</td>
+<td style="text-align:right;font-weight:700;color:var(--rojo);" class="num">${fmtNum(i.aPedir,2)} ${esc(i.producto.unidad)}</td>
+<td style="text-align:right;" class="num">${fmt(i.precio)}</td>
+<td style="text-align:right;font-weight:700;" class="num">${fmt(i.subtotal)}</td>
+</tr>`).join('')}</tbody>
+<tfoot><tr><td colspan="5" style="text-align:right;font-weight:700;padding-top:10px;border-top:2px solid var(--gris-claro);">TOTAL</td><td style="text-align:right;font-weight:800;color:var(--verde);padding-top:10px;border-top:2px solid var(--gris-claro);" class="num">${fmt(total)}</td></tr></tfoot>
+</table></div>`}
+</div>
+</div>`;
+}).join('');
+}
+
+function generarOCDesdeProyeccion(proveedorId){
+const data=window._proyeccionData&&window._proyeccionData[proveedorId];
+if(!data)return;
+const itemsConPedido=data.items.filter(i=>i.aPedir>0);
+if(!itemsConPedido.length){alert('No hay nada para pedirle a este proveedor esta semana.');return;}
+ocEditId=null;
+const sel=document.getElementById('oc-proveedor');
+sel.innerHTML=proveedores.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+sel.value=proveedorId;
+filtrarInstOC();
+const hoy=new Date().toISOString().split('T')[0];
+document.getElementById('modal-oc-title').textContent='Nueva OC (desde proyección)';
+document.getElementById('modal-oc-num').textContent='OC-2026-'+String(nextOCId).padStart(3,'0');
+document.getElementById('oc-fecha').value=hoy;
+document.getElementById('oc-obs').value=`Proyección de compra semanal - Semana ${data.semana} del patrón. Cubre: ${data.instAsig.map(i=>i.nombre).join(', ')}`;
+document.getElementById('oc-items-body').innerHTML='';
+itemsConPedido.forEach(i=>agregarItemOC(i.producto.id,Math.ceil(i.aPedir*100)/100,i.precio,proveedorId));
+calcularTotalOC();
+openModal('modal-oc');
+}
+
+function imprimirProyeccion(proveedorId){
+const data=window._proyeccionData&&window._proyeccionData[proveedorId];
+if(!data)return;
+const prov=data.prov;
+const emp=datosEmpresa||{};
+const itemsConPedido=data.items.filter(i=>i.aPedir>0);
+const total=itemsConPedido.reduce((s,i)=>s+i.subtotal,0);
+const filasItems=itemsConPedido.map(i=>`<tr>
+<td style="padding:8px;border-bottom:1px solid #eee;">${esc(i.producto.nombre)}</td>
+<td style="padding:8px;border-bottom:1px solid #eee;">${fmtNum(i.aPedir,2)}</td>
+<td style="padding:8px;border-bottom:1px solid #eee;">${esc(i.producto.unidad)}</td>
+<td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${fmt(i.precio)}</td>
+<td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">${fmt(i.subtotal)}</td>
+</tr>`).join('');
+
+document.getElementById('oc-print-area').innerHTML=`
+<div style="max-width:800px;margin:24px auto;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;padding:0 16px;">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #5b3e9e;padding-bottom:16px;margin-bottom:20px;">
+<div>
+<img src="data:image/png;base64,${LOGO_EMPRESA_B64}" alt="${esc(emp.nombre||'Logo')}" style="height:56px;display:block;margin-bottom:6px;">
+<div style="font-size:11px;color:#555;margin-top:4px;line-height:1.6;">
+${emp.ruc?`RUC: ${esc(emp.ruc)}<br>`:''}
+${emp.encargado?`Encargado: ${esc(emp.encargado)}<br>`:''}
+${emp.telefono?`Tel: ${esc(emp.telefono)}${emp.email?' · ':''}`:''}${emp.email?esc(emp.email):''}
+</div>
+</div>
+<div style="text-align:right;">
+<div style="display:inline-block;background:#5b3e9e;color:#fff;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.6px;">PROYECCIÓN DE COMPRA SEMANAL</div>
+<div style="font-size:16px;font-weight:800;margin-top:8px;">Semana ${data.semana} (se repite cada mes)</div>
+<div style="font-size:11px;color:#555;">Emitido: ${new Date().toLocaleDateString('es-PY')}</div>
+</div>
+</div>
+
+<div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:18px;font-size:12px;">
+<div style="font-size:10px;text-transform:uppercase;color:#888;font-weight:700;margin-bottom:6px;">Proveedor</div>
+<div style="font-weight:700;font-size:13px;margin-bottom:2px;">${esc(prov.nombre)}</div>
+${prov.ruc?`<div>RUC: ${esc(prov.ruc)}</div>`:''}
+${prov.dir?`<div>${esc(prov.dir)}</div>`:''}
+${prov.contacto?`<div>Contacto: ${esc(prov.contacto)}</div>`:''}
+${prov.tel?`<div>Tel: ${esc(prov.tel)}</div>`:''}
+<div style="margin-top:6px;">Instituciones que cubre: <strong>${data.instAsig.map(i=>esc(i.nombre)).join(', ')}</strong></div>
+</div>
+
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:22px;">
+<thead>
+<tr style="background:#5b3e9e;color:#fff;">
+<th style="padding:9px 8px;text-align:left;">Producto</th>
+<th style="padding:9px 8px;text-align:left;">Cantidad</th>
+<th style="padding:9px 8px;text-align:left;">Unidad</th>
+<th style="padding:9px 8px;text-align:right;">Precio unit.</th>
+<th style="padding:9px 8px;text-align:right;">Subtotal</th>
+</tr>
+</thead>
+<tbody>${filasItems||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#888;">Sin necesidades esta semana</td></tr>'}</tbody>
+<tfoot>
+<tr>
+<td colspan="4" style="text-align:right;font-weight:700;padding:12px 8px;border-top:2px solid #5b3e9e;">TOTAL ESTIMADO</td>
+<td style="text-align:right;font-weight:800;padding:12px 8px;border-top:2px solid #5b3e9e;color:#5b3e9e;">${fmt(total)}</td>
+</tr>
+</tfoot>
+</table>
+<div style="font-size:11px;color:#888;">Esta proyección es una estimación basada en el menú planificado y el stock actual. No reemplaza la Orden de Compra formal.</div>
+</div>
+`;
+
+document.body.classList.add('printing-oc');
+setTimeout(()=>{window.print();},50);
+}
+
 // INSTITUCIONES
 // =============================================
 function renderInstituciones(){
