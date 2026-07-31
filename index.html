@@ -417,7 +417,7 @@ details.cloud-details .details-body{padding:0 16px 16px;}
 </div>
 <!-- COMPARATIVA DE PRECIOS -->
 <div class="view" id="view-comparativa">
-<div class="alert alert-violeta">📊 Cada vez que editás el precio de un producto en el Catálogo, queda registrado acá. Con el tiempo vas a poder ver la evolución de precios de cada producto por proveedor.</div>
+<div class="alert alert-violeta">📊 Compará el precio actual de cada proveedor para un mismo producto. Además, cada vez que editás un precio en el Catálogo queda registrado acá, así con el tiempo también vas a ver la evolución en el tiempo.</div>
 <div class="card">
 <div style="padding:18px;">
 <div class="form-row">
@@ -2833,20 +2833,56 @@ if(!prodId){el.innerHTML='';return;}
 const p=getProd(prodId);
 const idsSeleccionados=Array.from(document.querySelectorAll('.comp-prov-check:checked')).map(c=>parseInt(c.value));
 const idsTodos=Array.from(document.querySelectorAll('.comp-prov-check')).map(c=>parseInt(c.value));
-
-const cambios=historialPrecios.filter(h=>h.productoId===prodId&&idsSeleccionados.includes(h.proveedorId)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-
 if(!idsTodos.length){el.innerHTML='';return;}
-if(!cambios.length){
-el.innerHTML=`<div class="card"><div style="padding:24px;text-align:center;color:var(--gris-medio);">
-<div style="font-size:28px;margin-bottom:8px;">📊</div>
-Todavía no hay historial de cambios de precio para <strong>${esc(p.nombre)}</strong> con los proveedores seleccionados.<br>
-<span style="font-size:12px;">Se va a ir completando cada vez que edites su precio en el Catálogo.</span>
-</div></div>`;
-return;
+
+// --- Comparativa de PRECIO ACTUAL (siempre disponible, no depende del historial) ---
+const actuales=idsTodos.filter(id=>idsSeleccionados.includes(id)).map(id=>{
+const entry=(p.proveedores||[]).find(x=>x.proveedorId===id);
+return entry?{proveedorId:id,nombre:getProv(id).nombre,precio:entry.precio,color:PALETA_PRECIOS[idsTodos.indexOf(id)%PALETA_PRECIOS.length]}:null;
+}).filter(Boolean).sort((a,b)=>a.precio-b.precio);
+
+let htmlActual;
+if(actuales.length){
+const min=actuales[0].precio;
+const barrasSvg=dibujarGraficoBarrasPrecios(actuales);
+const filasActual=actuales.map((a,i)=>{
+const diferencia=a.precio-min;
+const diferenciaPct=min?(diferencia/min*100):0;
+return `<tr>
+<td style="font-weight:600;">${esc(a.nombre)}</td>
+<td style="text-align:right;font-weight:700;" class="num">${fmt(a.precio)}</td>
+<td style="text-align:right;" class="num">${diferencia>0?'+':''}${fmt(diferencia)}</td>
+<td style="text-align:right;" class="num">${diferencia>0?'+':''}${diferenciaPct.toFixed(1)}%</td>
+<td style="text-align:center;">${i===0?'<span class="badge badge-verde">✅ Más barato</span>':'<span class="badge badge-gris">—</span>'}</td>
+</tr>`;
+}).join('');
+htmlActual=`
+<div class="card" style="margin-bottom:16px;">
+<div class="card-header">
+<div><div class="card-title">Precio actual por proveedor</div><div class="card-sub">Comparación con el precio de hoy cargado en el Catálogo</div></div>
+<button class="btn btn-secondary btn-sm" onclick="exportarComparativaPrecios(${prodId})">📥 Exportar Excel</button>
+</div>
+<div style="padding:16px;">${barrasSvg}</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Proveedor</th><th style="text-align:right;">Precio actual</th><th style="text-align:right;">Diferencia vs. más barato</th><th style="text-align:right;">%</th><th style="text-align:center;"></th></tr></thead>
+<tbody>${filasActual}</tbody>
+</table></div>
+</div>`;
+} else {
+htmlActual=`<div class="card" style="margin-bottom:16px;"><div style="padding:20px;text-align:center;color:var(--gris-medio);font-size:13px;">Ninguno de los proveedores seleccionados tiene precio cargado para <strong>${esc(p.nombre)}</strong> en el Catálogo.</div></div>`;
 }
 
-// Series por proveedor, en orden de aparición de los checkboxes (para colores consistentes)
+// --- Historial de cambios (se va llenando con el tiempo) ---
+const cambios=historialPrecios.filter(h=>h.productoId===prodId&&idsSeleccionados.includes(h.proveedorId)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+
+let htmlHistorial;
+if(!cambios.length){
+htmlHistorial=`<div class="card"><div style="padding:24px;text-align:center;color:var(--gris-medio);">
+<div style="font-size:28px;margin-bottom:8px;">📊</div>
+Todavía no hay historial de cambios de precio en el tiempo para <strong>${esc(p.nombre)}</strong> con los proveedores seleccionados.<br>
+<span style="font-size:12px;">Se va a ir completando cada vez que edites su precio en el Catálogo.</span>
+</div></div>`;
+} else {
 const series=idsTodos.filter(id=>idsSeleccionados.includes(id)).map((id,i)=>{
 const color=PALETA_PRECIOS[idsTodos.indexOf(id)%PALETA_PRECIOS.length];
 const puntos=cambios.filter(c=>c.proveedorId===id).map(c=>({fecha:c.fecha,precio:c.precioNuevo}));
@@ -2872,23 +2908,41 @@ return `<tr>
 </tr>`;
 }).join('');
 
-el.innerHTML=`
+htmlHistorial=`
 <div class="card" style="margin-bottom:16px;">
-<div class="card-header"><div class="card-title">${esc(p.nombre)}</div><div class="card-sub">Evolución de precio por proveedor</div></div>
+<div class="card-header"><div class="card-title">Evolución en el tiempo</div><div class="card-sub">Basado en los cambios de precio que fuiste registrando</div></div>
 <div style="padding:16px;">${svg}</div>
 </div>
 <div class="card">
-<div class="card-header">
-<div class="card-title">Historial de cambios</div>
-<button class="btn btn-secondary btn-sm" onclick="exportarComparativaPrecios(${prodId})">📥 Exportar Excel</button>
-</div>
+<div class="card-header"><div class="card-title">Historial de cambios</div></div>
 <div class="table-wrap"><table>
 <thead><tr><th>Fecha</th><th>Proveedor</th><th style="text-align:right;">Precio anterior</th><th style="text-align:right;">Precio nuevo</th><th style="text-align:right;">Variación ₲</th><th style="text-align:right;">Variación %</th><th style="text-align:center;">Tipo</th></tr></thead>
 <tbody>${filasTabla}</tbody>
 </table></div>
-</div>
-`;
+</div>`;
 }
+
+el.innerHTML=`<h3 style="margin:0 0 14px;font-size:16px;">${esc(p.nombre)}</h3>`+htmlActual+htmlHistorial;
+}
+
+function dibujarGraficoBarrasPrecios(items){
+const W=760,BAR_H=34,GAP=14,PAD_L=160,PAD_R=90,PAD_T=10;
+const H=PAD_T+items.length*(BAR_H+GAP);
+const max=Math.max(...items.map(i=>i.precio))||1;
+let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-family:inherit;">`;
+items.forEach((it,i)=>{
+const y=PAD_T+i*(BAR_H+GAP);
+const anchoDisp=W-PAD_L-PAD_R;
+const w=Math.max(2,(it.precio/max)*anchoDisp);
+svg+=`<text x="${PAD_L-10}" y="${y+BAR_H/2+4}" font-size="12" fill="#333" text-anchor="end" font-weight="600">${esc(it.nombre)}</text>`;
+svg+=`<rect x="${PAD_L}" y="${y}" width="${anchoDisp}" height="${BAR_H}" fill="#f2f2f2" rx="5"/>`;
+svg+=`<rect x="${PAD_L}" y="${y}" width="${w}" height="${BAR_H}" fill="${it.color}" rx="5"><title>${esc(it.nombre)}: ${fmt(it.precio)}</title></rect>`;
+svg+=`<text x="${PAD_L+w+10}" y="${y+BAR_H/2+4}" font-size="12" fill="#333" font-weight="700">${fmt(it.precio)}</text>`;
+});
+svg+='</svg>';
+return svg;
+}
+
 
 function dibujarGraficoLineasPrecios(series){
 const W=760,H=280,PAD_L=60,PAD_R=20,PAD_T=20,PAD_B=40;
@@ -2944,8 +2998,20 @@ return svg+`<div style="margin-top:8px;">${leyenda}</div>`;
 function exportarComparativaPrecios(prodId){
 const p=getProd(prodId);
 const idsSeleccionados=Array.from(document.querySelectorAll('.comp-prov-check:checked')).map(c=>parseInt(c.value));
+
+const actuales=idsSeleccionados.map(id=>{
+const entry=(p.proveedores||[]).find(x=>x.proveedorId===id);
+return entry?{proveedorId:id,precio:entry.precio}:null;
+}).filter(Boolean).sort((a,b)=>a.precio-b.precio);
+const minActual=actuales.length?actuales[0].precio:0;
+const rowsActuales=actuales.map(a=>({
+producto:p.nombre,proveedor:getProv(a.proveedorId).nombre,precio_actual:a.precio,
+diferencia_vs_mas_barato_gs:a.precio-minActual,
+diferencia_vs_mas_barato_pct:minActual?Number(((a.precio-minActual)/minActual*100).toFixed(1)):0
+}));
+
 const cambios=historialPrecios.filter(h=>h.productoId===prodId&&idsSeleccionados.includes(h.proveedorId)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-const rows=cambios.map(c=>{
+const rowsHistorial=cambios.map(c=>{
 const prov=getProv(c.proveedorId);
 const variacion=c.precioAnterior!=null?c.precioNuevo-c.precioAnterior:'';
 const variacionPct=c.precioAnterior?Number(((c.precioNuevo-c.precioAnterior)/c.precioAnterior*100).toFixed(1)):'';
@@ -2958,8 +3024,10 @@ variacion_pct:variacionPct,
 tipo:c.precioAnterior==null?'Primer precio':(c.precioNuevo>c.precioAnterior?'Subió':(c.precioNuevo<c.precioAnterior?'Bajó':'Sin cambio'))
 };
 });
+
 descargarWorkbook(`comparativa_precios_${p.nombre.replace(/[^a-z0-9]+/gi,'_')}.xlsx`,[
-{name:'Historial de precios',widths:[12,26,26,16,14,14,14,16],rows}
+{name:'Precio actual',widths:[26,26,16,20,20],rows:rowsActuales},
+{name:'Historial de precios',widths:[12,26,26,16,14,14,14,16],rows:rowsHistorial}
 ]);
 }
 
